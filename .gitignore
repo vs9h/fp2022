@@ -1,0 +1,7 @@
+.merlin
+.vscode
+_build
+/_reports
+.bloop
+.metals
+/install_linter.sh
