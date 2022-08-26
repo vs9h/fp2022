@@ -119,8 +119,8 @@
      val show : 'a -> (module SHOW with type t = 'a) -> string = <fun>   
      # show 42 (module ShowInt);;  
      - : string = "42"
-     ```
-  </details> 
+     ``` 
+     </details> 
 1.    
 1. OCaml, именованые и опциональные аргументы
    * mini-ML с функциями обычными и анонимными, замыканиями и рекурсией      
