@@ -1,7 +1,11 @@
-open Csharpoop_lib.Ast
+(** Copyright 2021-2022, Pavel Alimov *)
+
+(** SPDX-License-Identifier: LGPL-3.0-or-later *)
+
+open Csharpoop_lib.KeyMap
 open Csharpoop_lib.Parser
-open Csharpoop_lib.ClassLoader.ClassLoader (Csharpoop_lib.SupportTypes.Result)
-open Csharpoop_lib.Interpreter.Interpretation (Csharpoop_lib.SupportTypes.Result)
+open Csharpoop_lib.ClassLoader.ClassLoader (Csharpoop_lib.ResultMonad.Result)
+open Csharpoop_lib.Interpreter.Interpretation (Csharpoop_lib.ResultMonad.Result)
 
 let interpret_test program class_table =
   match load program class_table with
@@ -737,23 +741,6 @@ public class Summator
 |})
 
 let () = interpret_test program KeyMap.empty
-
-open Csharpoop_lib.Ast
-open Csharpoop_lib.Parser
-open Csharpoop_lib.ClassLoader.ClassLoader (Csharpoop_lib.SupportTypes.Result)
-open Csharpoop_lib.SupportTypes
-open Csharpoop_lib.Interpreter.Interpretation (Csharpoop_lib.SupportTypes.Result)
-
-let show_hashtbl ht pp_element = KeyMap.pp pp_element Format.std_formatter ht
-let show_class_table ht = show_hashtbl ht pp_table_class
-
-let interpret_test program class_table =
-  match load program class_table with
-  | Error message -> print_endline message
-  | Ok loaded -> (
-      match execute loaded with
-      | Error message -> print_endline message
-      | Ok result -> print_endline (show_context result ^ "\n"))
 
 let () =
   print_string "-_-_-_-_-_-_-_-_-_-_- Cast test -_-_-_-_-_-_-_-_-_-_-\n\n"

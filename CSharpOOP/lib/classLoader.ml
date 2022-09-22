@@ -1,18 +1,13 @@
+(** Copyright 2021-2022, Pavel Alimov *)
+
+(** SPDX-License-Identifier: LGPL-3.0-or-later *)
+
 open Ast
+open KeyMap
 open Parser
-open SupportTypes
+open ResultMonad
 
 let get_type_list = List.map fst
-
-let make_method_key_with_parent method_name parent_key_opt arguments =
-  match parent_key_opt with
-  | None ->
-      String.concat ""
-        (method_name :: List.map show_types (get_type_list arguments))
-  | Some (Name parent_key) ->
-      String.concat ""
-        (method_name :: parent_key
-        :: List.map show_types (get_type_list arguments))
 
 let get_parent_key_list_from_key (method_name : string) =
   match String.split_on_char '.' method_name with
@@ -28,20 +23,12 @@ let make_constructor_key constructor_name arguments =
   String.concat ""
     (constructor_name :: List.map show_types (get_type_list arguments))
 
-let convert_name_to_string = function Some (Name x) -> Some x | None -> None
-
 let rec convert_name_list_to_string_list = function
   | Name x :: xs -> [ x ] @ convert_name_list_to_string_list xs
   | [] -> []
 
 let equals_key = make_method_key "Equals" [ (TRef "Object", Name "obj") ]
 let to_string_key = make_method_key "ToString" []
-
-let is_equal_string_option = function
-  | None, None -> true
-  | Some _, None -> false
-  | None, Some _ -> false
-  | Some s1, Some s2 -> s1 = s2
 
 module ClassLoader (M : MONADERROR) = struct
   open M
@@ -72,11 +59,6 @@ module ClassLoader (M : MONADERROR) = struct
 
   let update_element hashtable old_key new_value =
     KeyMap.add old_key new_value hashtable
-
-  let rec list_map list action base =
-    match list with
-    | [] -> return base
-    | x :: xs -> action x >> list_map xs action base
 
   let rec seq_iter seq action base =
     match seq () with
@@ -171,11 +153,8 @@ module ClassLoader (M : MONADERROR) = struct
     in
     return (KeyMap.add object_hardcode.this_key object_hardcode hashtable)
 
-  let get_modifiers_list = ()
-
   (** Checking modifiers for class methods --- list of modifiers (e.g. const, static, public, etc.), parsed object element (field/method/constructor) *)
-  let check_modifiers_class_element pair =
-    match pair with
+  let check_modifiers_class_element = function
     | modifier_list, field_method_constructor -> (
         match field_method_constructor with
         | Method (_, _, _, _) when is_const modifier_list ->
@@ -237,8 +216,7 @@ module ClassLoader (M : MONADERROR) = struct
         | Constructor (_, _, _, _) -> error "Wrong constructor modifiers")
 
   (** Checking modifiers for interface methods --- list of modifiers (e.g. const, static, public, etc.), parsed object element (field/method/constructor) *)
-  let check_modifiers_interface_element pair =
-    match pair with
+  let check_modifiers_interface_element = function
     | modifier_list, field_method_constructor -> (
         match field_method_constructor with
         | Method (_, _, _, _)
@@ -314,8 +292,12 @@ module ClassLoader (M : MONADERROR) = struct
                           return (field_map', method_map, constructor_map)
                       | _ ->
                           error
-                            ("The field with this key: " ^ key
-                           ^ " already exists"))
+                            (String.concat " "
+                               [
+                                 "The field with this key:";
+                                 key;
+                                 "already exists";
+                               ]))
                       >>= fun (field_m, method_m, constructor_m) ->
                       helper_add_var ps field_m method_m constructor_m
                 in
@@ -364,7 +346,9 @@ module ClassLoader (M : MONADERROR) = struct
                     return (field_map, method_map', constructor_map)
                 | _ ->
                     error
-                      ("The method with this key: " ^ key ^ " already exists"))
+                      (String.concat " "
+                         [ "The method with this key:"; key; "already exists" ])
+                )
             (* Create constructor map for class *)
             | _, Constructor (Name name, arguments, call_constructor, body) -> (
                 let constructor_key = make_constructor_key name arguments in
@@ -386,8 +370,12 @@ module ClassLoader (M : MONADERROR) = struct
                     return (field_map, method_map, constructor_map')
                 | _ ->
                     error
-                      ("The constructor with this key: " ^ constructor_key
-                     ^ " already exists"))
+                      (String.concat " "
+                         [
+                           "The constructor with this key:";
+                           constructor_key;
+                           "already exists";
+                         ]))
           in
           (* Iterate by class fields *)
           let rec iter_fields fields field_map method_map constructor_map =
@@ -428,8 +416,9 @@ module ClassLoader (M : MONADERROR) = struct
               let cl_map = KeyMap.add class_key class_t cl_map in
               return cl_map
           | _ ->
-              error ("The class with this key: " ^ class_key ^ " already exists")
-          )
+              error
+                (String.concat " "
+                   [ "The class with this key:"; class_key; "already exists" ]))
       | Interface (_, Name interface_key, interface_parent, fields) -> (
           let add_class_elem field_elem field_map method_map constructor_map =
             check_modifiers_interface_element field_elem
@@ -467,7 +456,9 @@ module ClassLoader (M : MONADERROR) = struct
                     return (field_map, method_map', constructor_map)
                 | _ ->
                     error
-                      ("The method with this key: " ^ key ^ " already exists"))
+                      (String.concat " "
+                         [ "The method with this key:"; key; "already exists" ])
+                )
             (* Interface doesn't support fields and constructors *)
             | _, Field (_, _) -> error "Interface cannot have fields"
             | _, Constructor (_, _, _, _) ->
@@ -511,8 +502,12 @@ module ClassLoader (M : MONADERROR) = struct
               return cl_map
           | _ ->
               error
-                ("The interface with this key: " ^ interface_key
-               ^ " already exists"))
+                (String.concat " "
+                   [
+                     "The interface with this key:";
+                     interface_key;
+                     "already exists";
+                   ]))
     in
     (* Iterate by objects in AST *)
     let rec iter_classes object_list_ast class_map =
@@ -688,8 +683,12 @@ module ClassLoader (M : MONADERROR) = struct
           | true -> return ()
           | false ->
               error
-                ("The called method must be a constructor of " ^ class_key
-               ^ " class"))
+                (String.concat " "
+                   [
+                     "The called method must be a constructor of";
+                     class_key;
+                     "class";
+                   ]))
       | None -> return ()
     in
     let seq_parent_constructors = KeyMap.to_seq parent.constructors_table in
@@ -705,8 +704,12 @@ module ClassLoader (M : MONADERROR) = struct
           | true -> return ()
           | false ->
               error
-                ("The called method must be a constructor of " ^ class_key
-               ^ " or parent class"))
+                (String.concat " "
+                   [
+                     "The called method must be a constructor of";
+                     class_key;
+                     "or parent class";
+                   ]))
       | None -> return ()
     in
     let seq_parent_constructors = KeyMap.to_seq children.constructors_table in
@@ -724,7 +727,8 @@ module ClassLoader (M : MONADERROR) = struct
               iterate_for_checking_methods ht children next
             else
               error
-                ("Abstract method " ^ parent_method_key ^ " must be overriden")
+                (String.concat " "
+                   [ "Abstract method"; parent_method_key; "must be overriden" ])
         | None when not (is_abstract parent_method.method_modifiers) ->
             iterate_for_checking_methods ht children next
         | _ -> iterate_for_checking_methods ht children next)
@@ -738,7 +742,7 @@ module ClassLoader (M : MONADERROR) = struct
         let new_methods_table =
           match
             get_element_option
-              (parent.this_key ^ "." ^ parent_method_key)
+              (String.concat "" [ parent.this_key; "."; parent_method_key ])
               children.methods_table
             (* children method name looks like IInterface.Method()*)
           with
@@ -766,7 +770,7 @@ module ClassLoader (M : MONADERROR) = struct
               | Some _ -> children.methods_table)
           | Some child_overriden_method ->
               KeyMap.add
-                (parent.this_key ^ "." ^ parent_method_key)
+                (String.concat "" [ parent.this_key; "."; parent_method_key ])
                 { child_overriden_method with is_overriden = true }
                 children.methods_table
         in
@@ -787,55 +791,14 @@ module ClassLoader (M : MONADERROR) = struct
     iterate_for_checking_methods ht children seq_parent_methods
     >> return (build_new_children_methods seq_parent_methods parent children ht)
 
-  let rec inheritance_object_class_methods
-      (seq_methods : (string * table_method) Seq.t) (children : table_class)
-      (result : table_class KeyMap.t) =
-    match seq_methods () with
-    | Seq.Nil -> (result, children)
-    | Seq.Cons ((object_method_key, object_method), next) ->
-        let new_methods_table =
-          match get_element_option object_method_key children.methods_table with
-          | None ->
-              KeyMap.add object_method_key object_method children.methods_table
-          | _ -> children.methods_table
-        in
-        let new_children =
-          { children with methods_table = new_methods_table }
-        in
-        let children_is_class =
-          if children.is_class then
-            inheritance_object_class_methods next new_children
-              (KeyMap.add new_children.this_key new_children result)
-          else inheritance_object_class_methods next children result
-        in
-        children_is_class
-
-  (** Adds object class methods (e.g. Equals() or ToString()) to every class *)
-  let many_object_class_inheritance ht children =
-    let object_class = get_element_option "Object" ht in
-    match object_class with
-    | None -> error "There is no Object class =("
-    | Some object_class ->
-        let seq_object_methods = KeyMap.to_seq object_class.methods_table in
-        let children_is_class =
-          if children.is_class then
-            return
-              (inheritance_object_class_methods seq_object_methods children ht)
-          else return (ht, children)
-        in
-        children_is_class
-
   let many_check_method_override ht parent children =
     let not_change_access_modifiers parent_m children_m =
-      if
-        is_public parent_m.method_modifiers
-        && is_public children_m.method_modifiers
-        || is_protected parent_m.method_modifiers
-           && is_protected children_m.method_modifiers
-        || is_private parent_m.method_modifiers
-           && is_private children_m.method_modifiers
-      then true
-      else false
+      is_public parent_m.method_modifiers
+      && is_public children_m.method_modifiers
+      || is_protected parent_m.method_modifiers
+         && is_protected children_m.method_modifiers
+      || is_private parent_m.method_modifiers
+         && is_private children_m.method_modifiers
     in
     let check_children_method_override :
         table_class -> string * table_method -> unit t =
@@ -846,8 +809,12 @@ module ClassLoader (M : MONADERROR) = struct
           match get_element_option children_method_key parent.methods_table with
           | None ->
               error
-                ("Cannot override non-existent " ^ children_method_key
-               ^ " method in parent")
+                (String.concat " "
+                   [
+                     "Cannot override non-existent";
+                     children_method_key;
+                     "method in parent";
+                   ])
           | Some parent_method -> (
               match
                 is_virtual parent_method.method_modifiers
@@ -861,14 +828,24 @@ module ClassLoader (M : MONADERROR) = struct
               (* Otherwise -- access modifiers changed *)
               | true ->
                   error
-                    ("Cannot change access modifiers when overriding "
-                   ^ parent.this_key ^ "." ^ children_method_key)
+                    (String.concat ""
+                       [
+                         "Cannot change access modifiers when overriding ";
+                         parent.this_key;
+                         ".";
+                         children_method_key;
+                       ])
               (* Parent method not virtual/abstract/override *)
               | false ->
                   error
-                    ("Cannot override non-virtual or non-abstract "
-                   ^ children_method_key ^ " method in " ^ parent.this_key
-                   ^ " parent class")))
+                    (String.concat " "
+                       [
+                         "Cannot override non-virtual or non-abstract";
+                         children_method_key;
+                         "method in";
+                         parent.this_key;
+                         "parent class";
+                       ])))
     in
     let seq_children_methods = KeyMap.to_seq children.methods_table in
     seq_iter seq_children_methods (check_children_method_override parent) ht
@@ -884,15 +861,23 @@ module ClassLoader (M : MONADERROR) = struct
       | None -> (
           match
             get_element_option
-              (curr_parent.this_key ^ "." ^ parent_method_key)
+              (String.concat ""
+                 [ curr_parent.this_key; "."; parent_method_key ])
               curr_children.methods_table
             (* children method name looks like IInterface.Method()*)
           with
           | None ->
               error
-                ("Class " ^ curr_children.this_key ^ " doesn't realize parent "
-               ^ curr_parent.this_key ^ " interface " ^ parent_method_key
-               ^ " method")
+                (String.concat " "
+                   [
+                     "Class";
+                     curr_children.this_key;
+                     "doesn't realize parent";
+                     curr_parent.this_key;
+                     "interface";
+                     parent_method_key;
+                     "method";
+                   ])
           | Some _ -> return ())
       | Some _ -> return ()
     in
@@ -931,8 +916,12 @@ module ClassLoader (M : MONADERROR) = struct
           match get_element_option children_children_key ht' with
           | None ->
               error
-                ("There is no " ^ children_children_key
-               ^ " children in class table")
+                (String.concat " "
+                   [
+                     "There is no";
+                     children_children_key;
+                     "children in class table";
+                   ])
           | Some children_of_children ->
               transfert ht' children children_of_children >>= fun updated_ht ->
               iter_by_childs updated_ht tail)
@@ -946,7 +935,9 @@ module ClassLoader (M : MONADERROR) = struct
         let processing children_key ht =
           match get_element_option children_key ht with
           | None ->
-              error ("There is no " ^ children_key ^ " children in class table")
+              error
+                (String.concat " "
+                   [ "There is no"; children_key; "children in class table" ])
           | Some children -> transfert ht object_class children
         in
         iter_by_childs ht processing object_class.children_keys

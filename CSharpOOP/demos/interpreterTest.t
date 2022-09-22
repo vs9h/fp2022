@@ -6,11 +6,11 @@
                        field_references_table = []; number = 0 });
     var_table =
     ["a": { v_type = TInt; v_key = "a"; is_const = false; assignment_count = 1;
-            v_value = VInt (1); visibility_level = 0 },
+            v_value = VInt (1); vis_lvl = 0 },
      "b": { v_type = TInt; v_key = "b"; is_const = false; assignment_count = 1;
-            v_value = VInt (2); visibility_level = 0 },
+            v_value = VInt (2); vis_lvl = 0 },
      "c": { v_type = TInt; v_key = "c"; is_const = false; assignment_count = 1;
-            v_value = VInt (3); visibility_level = 0 },
+            v_value = VInt (3); vis_lvl = 0 },
      ];
     last_expr_result = VInt (3); runtime_signal = NoSignal;
     curr_method_type = TVoid; is_main_scope = true; nested_loops_cnt = 0;
@@ -25,44 +25,35 @@
                        field_references_table = []; number = 0 });
     var_table =
     ["a": { v_type = TInt; v_key = "a"; is_const = false; assignment_count = 2;
-            v_value = VInt (2); visibility_level = 0 },
+            v_value = VInt (2); vis_lvl = 0 },
      "b": { v_type = TInt; v_key = "b"; is_const = false; assignment_count = 1;
-            v_value = VInt (2); visibility_level = 0 },
+            v_value = VInt (2); vis_lvl = 0 },
      "c": { v_type = TInt; v_key = "c"; is_const = false; assignment_count = 1;
-            v_value = VInt (3); visibility_level = 0 },
+            v_value = VInt (3); vis_lvl = 0 },
      "s1": { v_type = TString; v_key = "s1"; is_const = false;
-             assignment_count = 1; v_value = VString ("a");
-             visibility_level = 0 },
+             assignment_count = 1; v_value = VString ("a"); vis_lvl = 0 },
      "s2": { v_type = TString; v_key = "s2"; is_const = false;
-             assignment_count = 1; v_value = VString ("b");
-             visibility_level = 0 },
+             assignment_count = 1; v_value = VString ("b"); vis_lvl = 0 },
      "s3": { v_type = TString; v_key = "s3"; is_const = false;
-             assignment_count = 1; v_value = VString ("ab");
-             visibility_level = 0 },
+             assignment_count = 1; v_value = VString ("ab"); vis_lvl = 0 },
      "s4": { v_type = TString; v_key = "s4"; is_const = false;
-             assignment_count = 1; v_value = VString ("a2");
-             visibility_level = 0 },
+             assignment_count = 1; v_value = VString ("a2"); vis_lvl = 0 },
      "s5": { v_type = TString; v_key = "s5"; is_const = false;
-             assignment_count = 1; v_value = VString ("2b");
-             visibility_level = 0 },
+             assignment_count = 1; v_value = VString ("2b"); vis_lvl = 0 },
      "val1": { v_type = TInt; v_key = "val1"; is_const = false;
-               assignment_count = 1; v_value = VInt (15); visibility_level = 0
-               },
+               assignment_count = 1; v_value = VInt (15); vis_lvl = 0 },
      "val2": { v_type = TInt; v_key = "val2"; is_const = false;
-               assignment_count = 1; v_value = VInt (3); visibility_level = 0 },
+               assignment_count = 1; v_value = VInt (3); vis_lvl = 0 },
      "val3": { v_type = TInt; v_key = "val3"; is_const = false;
-               assignment_count = 1; v_value = VInt (101); visibility_level = 0
-               },
+               assignment_count = 1; v_value = VInt (101); vis_lvl = 0 },
      "val4": { v_type = TInt; v_key = "val4"; is_const = false;
-               assignment_count = 1; v_value = VInt (5); visibility_level = 0 },
+               assignment_count = 1; v_value = VInt (5); vis_lvl = 0 },
      "val5": { v_type = TInt; v_key = "val5"; is_const = false;
-               assignment_count = 1; v_value = VInt (0); visibility_level = 0 },
+               assignment_count = 1; v_value = VInt (0); vis_lvl = 0 },
      "val6": { v_type = TInt; v_key = "val6"; is_const = false;
-               assignment_count = 1; v_value = VInt (300); visibility_level = 0
-               },
+               assignment_count = 1; v_value = VInt (300); vis_lvl = 0 },
      "val7": { v_type = TInt; v_key = "val7"; is_const = false;
-               assignment_count = 1; v_value = VInt (124); visibility_level = 0
-               },
+               assignment_count = 1; v_value = VInt (124); vis_lvl = 0 },
      ];
     last_expr_result = VString ("2b"); runtime_signal = NoSignal;
     curr_method_type = TVoid; is_main_scope = true; nested_loops_cnt = 0;
@@ -90,13 +81,13 @@
                        field_references_table = []; number = 0 });
     var_table =
     ["a": { v_type = TInt; v_key = "a"; is_const = false; assignment_count = 1;
-            v_value = VInt (10); visibility_level = 0 },
+            v_value = VInt (10); vis_lvl = 0 },
      "b": { v_type = TInt; v_key = "b"; is_const = false; assignment_count = 1;
-            v_value = VInt (50); visibility_level = 0 },
+            v_value = VInt (50); vis_lvl = 0 },
      "c": { v_type = TInt; v_key = "c"; is_const = false; assignment_count = 1;
-            v_value = VInt (100); visibility_level = 0 },
+            v_value = VInt (100); vis_lvl = 0 },
      "d": { v_type = TInt; v_key = "d"; is_const = false; assignment_count = 1;
-            v_value = VInt (10); visibility_level = 0 },
+            v_value = VInt (10); vis_lvl = 0 },
      "p1": { v_type = TRef ("Person"); v_key = "p1"; is_const = false;
              assignment_count = 1;
              v_value =
@@ -120,7 +111,7 @@
                                                              0 },
                                                    ];
                                                   number = 1 }));
-             visibility_level = 0 },
+             vis_lvl = 0 },
      "p2": { v_type = TRef ("Person"); v_key = "p2"; is_const = false;
              assignment_count = 1;
              v_value =
@@ -144,7 +135,7 @@
                                                              0 },
                                                    ];
                                                   number = 2 }));
-             visibility_level = 0 },
+             vis_lvl = 0 },
      "p3": { v_type = TRef ("Person"); v_key = "p3"; is_const = false;
              assignment_count = 1;
              v_value =
@@ -168,13 +159,11 @@
                                                              0 },
                                                    ];
                                                   number = 1 }));
-             visibility_level = 0 },
+             vis_lvl = 0 },
      "s1": { v_type = TString; v_key = "s1"; is_const = false;
-             assignment_count = 1; v_value = VString ("a");
-             visibility_level = 0 },
+             assignment_count = 1; v_value = VString ("a"); vis_lvl = 0 },
      "s2": { v_type = TString; v_key = "s2"; is_const = false;
-             assignment_count = 1; v_value = VString ("b");
-             visibility_level = 0 },
+             assignment_count = 1; v_value = VString ("b"); vis_lvl = 0 },
      ];
     last_expr_result = VVoid; runtime_signal = NoSignal;
     curr_method_type = TVoid; is_main_scope = true; nested_loops_cnt = 0;
@@ -191,9 +180,9 @@
                        field_references_table = []; number = 0 });
     var_table =
     ["a1": { v_type = TInt; v_key = "a1"; is_const = false;
-             assignment_count = 1; v_value = VInt (25); visibility_level = 0 },
+             assignment_count = 1; v_value = VInt (25); vis_lvl = 0 },
      "a2": { v_type = TInt; v_key = "a2"; is_const = false;
-             assignment_count = 1; v_value = VInt (30); visibility_level = 0 },
+             assignment_count = 1; v_value = VInt (30); vis_lvl = 0 },
      "person": { v_type = TRef ("Person"); v_key = "person"; is_const = false;
                  assignment_count = 1;
                  v_value =
@@ -220,10 +209,9 @@
                                                                  0 },
                                                        ];
                                                       number = 1 }));
-                 visibility_level = 0 },
+                 vis_lvl = 0 },
      "res": { v_type = TInt; v_key = "res"; is_const = false;
-              assignment_count = 1; v_value = VInt (125); visibility_level = 0
-              },
+              assignment_count = 1; v_value = VInt (125); vis_lvl = 0 },
      ];
     last_expr_result = VVoid; runtime_signal = NoSignal;
     curr_method_type = TVoid; is_main_scope = true; nested_loops_cnt = 0;
@@ -261,7 +249,7 @@
                                                              0 },
                                                    ];
                                                   number = 1 }));
-             visibility_level = 0 },
+             vis_lvl = 0 },
      "p2": { v_type = TRef ("Person"); v_key = "p2"; is_const = false;
              assignment_count = 1;
              v_value =
@@ -285,7 +273,7 @@
                                                              0 },
                                                    ];
                                                   number = 1 }));
-             visibility_level = 0 },
+             vis_lvl = 0 },
      "p3": { v_type = TRef ("Person"); v_key = "p3"; is_const = false;
              assignment_count = 1;
              v_value =
@@ -309,7 +297,7 @@
                                                              0 },
                                                    ];
                                                   number = 1 }));
-             visibility_level = 0 },
+             vis_lvl = 0 },
      "person": { v_type = TRef ("Person"); v_key = "person"; is_const = false;
                  assignment_count = 1;
                  v_value =
@@ -336,9 +324,9 @@
                                                                  0 },
                                                        ];
                                                       number = 1 }));
-                 visibility_level = 0 },
+                 vis_lvl = 0 },
      "res": { v_type = TInt; v_key = "res"; is_const = false;
-              assignment_count = 1; v_value = VInt (55); visibility_level = 0 },
+              assignment_count = 1; v_value = VInt (55); vis_lvl = 0 },
      ];
     last_expr_result = VVoid; runtime_signal = NoSignal;
     curr_method_type = TVoid; is_main_scope = true; nested_loops_cnt = 0;
@@ -427,7 +415,7 @@
                                                                       0 },
                                                            ];
                                                           number = 2 }));
-                     visibility_level = 0 },
+                     vis_lvl = 0 },
      "childSecond": { v_type = TRef ("Child"); v_key = "childSecond";
                       is_const = false; assignment_count = 1;
                       v_value =
@@ -498,7 +486,7 @@
                                                                       0 },
                                                             ];
                                                            number = 4 }));
-                      visibility_level = 0 },
+                      vis_lvl = 0 },
      "person": { v_type = TRef ("Person"); v_key = "person"; is_const = false;
                  assignment_count = 1;
                  v_value =
@@ -525,7 +513,7 @@
                                                                  0 },
                                                        ];
                                                       number = 1 }));
-                 visibility_level = 0 },
+                 vis_lvl = 0 },
      ];
     last_expr_result = VVoid; runtime_signal = NoSignal;
     curr_method_type = TVoid; is_main_scope = true; nested_loops_cnt = 0;
@@ -540,13 +528,13 @@
                        field_references_table = []; number = 0 });
     var_table =
     ["a": { v_type = TInt; v_key = "a"; is_const = false; assignment_count = 5;
-            v_value = VInt (1000); visibility_level = 0 },
+            v_value = VInt (1000); vis_lvl = 0 },
      "b": { v_type = TInt; v_key = "b"; is_const = false; assignment_count = 4;
-            v_value = VInt (2000); visibility_level = 0 },
+            v_value = VInt (2000); vis_lvl = 0 },
      "c": { v_type = TInt; v_key = "c"; is_const = false; assignment_count = 4;
-            v_value = VInt (3000); visibility_level = 0 },
+            v_value = VInt (3000); vis_lvl = 0 },
      "i": { v_type = TInt; v_key = "i"; is_const = false; assignment_count = 4;
-            v_value = VInt (3); visibility_level = 0 },
+            v_value = VInt (3); vis_lvl = 0 },
      ];
     last_expr_result = VInt (3000); runtime_signal = NoSignal;
     curr_method_type = TVoid; is_main_scope = true; nested_loops_cnt = 0;
@@ -563,9 +551,9 @@
                        field_references_table = []; number = 0 });
     var_table =
     ["i": { v_type = TInt; v_key = "i"; is_const = false; assignment_count = 4;
-            v_value = VInt (3); visibility_level = 1 },
+            v_value = VInt (3); vis_lvl = 1 },
      "n": { v_type = TInt; v_key = "n"; is_const = false; assignment_count = 1;
-            v_value = VInt (4); visibility_level = 0 },
+            v_value = VInt (4); vis_lvl = 0 },
      ];
     last_expr_result = VBool (false); runtime_signal = NoSignal;
     curr_method_type = TVoid; is_main_scope = true; nested_loops_cnt = 0;
@@ -670,7 +658,7 @@
                                                                   0 },
                                                       ];
                                                      number = 2 }));
-                visibility_level = 0 },
+                vis_lvl = 0 },
      "person": { v_type = TRef ("Person"); v_key = "person"; is_const = false;
                  assignment_count = 1;
                  v_value =
@@ -697,7 +685,7 @@
                                                                  0 },
                                                        ];
                                                       number = 1 }));
-                 visibility_level = 0 },
+                 vis_lvl = 0 },
      ];
     last_expr_result = VVoid; runtime_signal = NoSignal;
     curr_method_type = TVoid; is_main_scope = true; nested_loops_cnt = 0;
@@ -714,7 +702,7 @@
                        field_references_table = []; number = 0 });
     var_table =
     ["f": { v_type = TInt; v_key = "f"; is_const = false; assignment_count = 1;
-            v_value = VInt (120); visibility_level = 0 },
+            v_value = VInt (120); vis_lvl = 0 },
      "factorial": { v_type = TRef ("Factorial"); v_key = "factorial";
                     is_const = false; assignment_count = 1;
                     v_value =
@@ -723,7 +711,7 @@
                                                          ext_interface = None;
                                                          field_references_table =
                                                          []; number = 1 }));
-                    visibility_level = 0 },
+                    vis_lvl = 0 },
      ];
     last_expr_result = VVoid; runtime_signal = NoSignal;
     curr_method_type = TVoid; is_main_scope = true; nested_loops_cnt = 0;
@@ -770,7 +758,7 @@
                                                               0 },
                                                     ];
                                                    number = 1 }));
-              visibility_level = 0 },
+              vis_lvl = 0 },
      ];
     last_expr_result =
     VObjectReference (ObjectReference ({ class_key = "Cat";
@@ -819,10 +807,9 @@
                        field_references_table = []; number = 0 });
     var_table =
     ["a": { v_type = TInt; v_key = "a"; is_const = false; assignment_count = 1;
-            v_value = VInt (8); visibility_level = 0 },
+            v_value = VInt (8); vis_lvl = 0 },
      "s": { v_type = TString; v_key = "s"; is_const = false;
-            assignment_count = 1; v_value = VString ("FP");
-            visibility_level = 0 },
+            assignment_count = 1; v_value = VString ("FP"); vis_lvl = 0 },
      "summator": { v_type = TRef ("Summator"); v_key = "summator";
                    is_const = false; assignment_count = 1;
                    v_value =
@@ -830,7 +817,7 @@
                                                         ext_interface = None;
                                                         field_references_table =
                                                         []; number = 1 }));
-                   visibility_level = 0 },
+                   vis_lvl = 0 },
      ];
     last_expr_result = VVoid; runtime_signal = NoSignal;
     curr_method_type = TVoid; is_main_scope = true; nested_loops_cnt = 0;
@@ -846,7 +833,7 @@
                        field_references_table = []; number = 0 });
     var_table =
     ["a": { v_type = TInt; v_key = "a"; is_const = false; assignment_count = 1;
-            v_value = VInt (123); visibility_level = 0 },
+            v_value = VInt (123); vis_lvl = 0 },
      "b": { v_type = TRef ("SomeClass"); v_key = "b"; is_const = false;
             assignment_count = 1;
             v_value =
@@ -854,7 +841,7 @@
                                                  ext_interface = None;
                                                  field_references_table = [];
                                                  number = 1 }));
-            visibility_level = 0 },
+            vis_lvl = 0 },
      ];
     last_expr_result = VVoid; runtime_signal = NoSignal;
     curr_method_type = TVoid; is_main_scope = true; nested_loops_cnt = 0;
@@ -871,10 +858,9 @@
                        field_references_table = []; number = 0 });
     var_table =
     ["a": { v_type = TInt; v_key = "a"; is_const = false; assignment_count = 1;
-            v_value = VInt (1); visibility_level = 0 },
+            v_value = VInt (1); vis_lvl = 0 },
      "b": { v_type = TBool; v_key = "b"; is_const = false;
-            assignment_count = 1; v_value = VBool (true); visibility_level = 0
-            },
+            assignment_count = 1; v_value = VBool (true); vis_lvl = 0 },
      ];
     last_expr_result = VVoid; runtime_signal = NoSignal;
     curr_method_type = TVoid; is_main_scope = true; nested_loops_cnt = 0;
@@ -892,12 +878,11 @@
                        field_references_table = []; number = 0 });
     var_table =
     ["a": { v_type = TInt; v_key = "a"; is_const = false; assignment_count = 1;
-            v_value = VInt (1); visibility_level = 0 },
+            v_value = VInt (1); vis_lvl = 0 },
      "b": { v_type = TBool; v_key = "b"; is_const = false;
-            assignment_count = 1; v_value = VBool (false); visibility_level = 0
-            },
+            assignment_count = 1; v_value = VBool (false); vis_lvl = 0 },
      "c": { v_type = TInt; v_key = "c"; is_const = false; assignment_count = 1;
-            v_value = VInt (1); visibility_level = 0 },
+            v_value = VInt (1); vis_lvl = 0 },
      ];
     last_expr_result = VVoid; runtime_signal = NoSignal;
     curr_method_type = TVoid; is_main_scope = true; nested_loops_cnt = 0;
@@ -924,7 +909,7 @@
                                                  Some ("SomeClass");
                                                  field_references_table = [];
                                                  number = 1 }));
-            visibility_level = 0 },
+            vis_lvl = 0 },
      "b": { v_type = TRef ("SomeClass"); v_key = "b"; is_const = false;
             assignment_count = 1;
             v_value =
@@ -932,9 +917,9 @@
                                                  ext_interface = None;
                                                  field_references_table = [];
                                                  number = 1 }));
-            visibility_level = 0 },
+            vis_lvl = 0 },
      "c": { v_type = TInt; v_key = "c"; is_const = false; assignment_count = 1;
-            v_value = VInt (123); visibility_level = 0 },
+            v_value = VInt (123); vis_lvl = 0 },
      ];
     last_expr_result = VVoid; runtime_signal = NoSignal;
     curr_method_type = TVoid; is_main_scope = true; nested_loops_cnt = 0;

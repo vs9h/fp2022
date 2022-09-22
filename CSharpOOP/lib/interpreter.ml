@@ -1,5 +1,10 @@
+(** Copyright 2021-2022, Pavel Alimov *)
+
+(** SPDX-License-Identifier: LGPL-3.0-or-later *)
+
 open Ast
-open SupportTypes
+open KeyMap
+open ResultMonad
 open Printf
 open Operators
 open ClassLoader
@@ -14,11 +19,8 @@ module Interpretation (M : MONADERROR) = struct
     is_const : bool;
     assignment_count : int;
     v_value : values;
-    visibility_level : int;
+    vis_lvl : int;
   }
-  [@@deriving show { with_path = false }]
-
-  type signal = WasBreak | WasContinue | WasReturn | NoSignal
   [@@deriving show { with_path = false }]
 
   type context = {
@@ -75,32 +77,18 @@ module Interpretation (M : MONADERROR) = struct
     | x :: xs, y :: ys -> f acc x y >>= fun res -> mfold_left2 f res xs ys
     | _, _ -> error "Wrong lists for fold_left2"
 
-  let rec mfold_right f l acc =
-    match l with
-    | [] -> return acc
-    | x :: xs -> mfold_right f xs acc >>= fun r -> f x r
-
-  let rec mfold_left f acc l =
-    match l with
-    | [] -> return acc
-    | x :: xs -> f acc x >>= fun r -> mfold_left f r xs
-
   let get_field_list = function
     | Class (_, _, _, field_list) -> List.map snd field_list
     | Interface (_, _, _, field_list) -> List.map snd field_list
 
   let convert_element_pair_list = function
-    | t, p_list -> List.map (fun p -> match p with s, f -> (t, s, f)) p_list
+    | t, p_list -> List.map (function s, f -> (t, s, f)) p_list
 
   let get_variable_field_pairs_list_typed cd =
-    List.concat
-      (List.map convert_element_pair_list
-         (List.filter_map
-            (fun f ->
-              match f with
-              | Field (t, pair_list) -> Some (t, pair_list)
-              | _ -> None)
-            (get_field_list cd)))
+    List.concat_map convert_element_pair_list
+      (List.filter_map
+         (function Field (t, pair_list) -> Some (t, pair_list) | _ -> None)
+         (get_field_list cd))
 
   let get_object_fields = function
     | NullObjectReference -> raise (Invalid_argument "NullReferenceException")
@@ -118,8 +106,7 @@ module Interpretation (M : MONADERROR) = struct
         } ->
         (key, interface, table, num)
 
-  let get_ref_identifier inp_type =
-    match inp_type with
+  let get_ref_identifier = function
     | TRef ref_name -> return ref_name
     | _ -> error "Not a reference type"
 
@@ -143,43 +130,48 @@ module Interpretation (M : MONADERROR) = struct
     in
     iter_classes class_seq
 
-  let rec find_parent_class_key parent_list class_table result =
+  let rec find_parent_class_key parent_list class_table =
     match parent_list with
-    | [] -> result
+    | [] -> None
     | curr_parent_key :: tail -> (
         match get_element_option curr_parent_key class_table with
         | Some curr_parent when curr_parent.is_class -> Some curr_parent_key
-        | _ -> find_parent_class_key tail class_table None)
+        | _ -> find_parent_class_key tail class_table)
 
   let startswith test_str sub_str =
-    if String.length sub_str > String.length test_str then false
-    else
-      let sub = String.sub test_str 0 (String.length sub_str) in
-      String.equal sub sub_str
+    let is_left_longer_than_right =
+      String.length sub_str <= String.length test_str
+    in
+    let check = function
+      | true ->
+          let sub = String.sub test_str 0 (String.length sub_str) in
+          String.equal sub sub_str
+      | _ -> false
+    in
+    check is_left_longer_than_right
 
   (** Сheck that the left class is a parent of the right *)
   let rec check_parent_tree class_table left_class_key right_class_key =
     match get_element_option right_class_key class_table with
     | None -> false
+    | Some clr_by_key when clr_by_key.this_key = left_class_key -> true
     | Some clr_by_key -> (
-        if clr_by_key.this_key = left_class_key then true
-        else
-          match clr_by_key.parent_key with
-          | [] -> false
-          | par_k :: [] -> check_parent_tree class_table left_class_key par_k
-          | par_k :: tail ->
-              let is_success =
-                check_parent_tree class_table left_class_key par_k
-              in
-              let rec iter_by_parents is_success = function
-                | [] -> is_success
-                | par_k :: tail ->
-                    iter_by_parents
-                      (is_success
-                      || check_parent_tree class_table left_class_key par_k)
-                      tail
-              in
-              iter_by_parents is_success tail)
+        match clr_by_key.parent_key with
+        | [] -> false
+        | par_k :: [] -> check_parent_tree class_table left_class_key par_k
+        | par_k :: tail ->
+            let is_success =
+              check_parent_tree class_table left_class_key par_k
+            in
+            let rec iter_by_parents is_success = function
+              | [] -> is_success
+              | par_k :: tail ->
+                  iter_by_parents
+                    (is_success
+                    || check_parent_tree class_table left_class_key par_k)
+                    tail
+            in
+            iter_by_parents is_success tail)
 
   let find_last_overriden call_class_key cast_class method_name class_table =
     let rec helper_iter_by_childs child_list result =
@@ -203,13 +195,23 @@ module Interpretation (M : MONADERROR) = struct
     | Some _ -> helper_iter_by_childs childrens cast_class
     | None ->
         error
-          ("Parent class (interface) " ^ cast_class.this_key ^ " not have "
-         ^ method_name ^ " for " ^ call_class_key ^ " class.")
+          (String.concat " "
+             [
+               "Parent class (interface)";
+               cast_class.this_key;
+               "not have";
+               method_name;
+               "for";
+               call_class_key;
+               "class.";
+             ])
 
   (** Finding the nearest direct descendant of the class cast to *)
   let rec find_nearest_child call_class_key children_list class_table =
     match children_list with
-    | [] -> error ("No childs are parents for " ^ call_class_key)
+    | [] ->
+        error
+          (String.concat " " [ "No childs are parents for"; call_class_key ])
     | curr_child_key :: tail ->
         get_elem_if_present_m curr_child_key class_table >>= fun child ->
         if check_parent_tree class_table curr_child_key call_class_key then
@@ -219,19 +221,16 @@ module Interpretation (M : MONADERROR) = struct
   let rec expr_type_check t_expr ctx class_table =
     match t_expr with
     | Add (left, right) -> (
-        expr_type_check left ctx class_table >>= fun lt ->
-        match lt with
+        expr_type_check left ctx class_table >>= function
         | TInt -> (
-            expr_type_check right ctx class_table >>= fun rt ->
-            match rt with
+            expr_type_check right ctx class_table >>= function
             | TInt -> return TInt
             | TString -> return TString
             | _ ->
                 error "Wrong right type Add function: must be <int> or <string>"
             )
         | TString -> (
-            expr_type_check right ctx class_table >>= fun rt ->
-            match rt with
+            expr_type_check right ctx class_table >>= function
             | TInt | TString -> return TString
             | _ ->
                 error "Wrong right type Add function: must be <int> or <string>"
@@ -241,68 +240,55 @@ module Interpretation (M : MONADERROR) = struct
     | Div (left, right)
     | Mod (left, right)
     | Mult (left, right) -> (
-        expr_type_check left ctx class_table >>= fun lt ->
-        match lt with
+        expr_type_check left ctx class_table >>= function
         | TInt -> (
-            expr_type_check right ctx class_table >>= fun rt ->
-            match rt with
+            expr_type_check right ctx class_table >>= function
             | TInt -> return TInt
             | _ -> error "Wrong right type: must be <int>")
         | _ -> error "Wrong left type: must be <int>")
     | PostDec value | PostInc value | PrefDec value | PrefInc value -> (
-        expr_type_check value ctx class_table >>= fun vt ->
-        match vt with
+        expr_type_check value ctx class_table >>= function
         | TInt -> return TInt
         | _ -> error "Wrong value type: must be <int>")
     | And (left, right) | Or (left, right) -> (
-        expr_type_check left ctx class_table >>= fun lt ->
-        match lt with
+        expr_type_check left ctx class_table >>= function
         | TBool -> (
-            expr_type_check right ctx class_table >>= fun rt ->
-            match rt with
+            expr_type_check right ctx class_table >>= function
             | TBool -> return TBool
             | _ -> error "Wrong right type: must be <bool>")
         | _ -> error "Wrong left type: must be <bool>")
     | Not value -> (
-        expr_type_check value ctx class_table >>= fun vt ->
-        match vt with
+        expr_type_check value ctx class_table >>= function
         | TBool -> return TBool
         | _ -> error "Wrong value type: must be <bool>")
     | Less (left, right)
     | More (left, right)
     | LessOrEqual (left, right)
     | MoreOrEqual (left, right) -> (
-        expr_type_check left ctx class_table >>= fun lt ->
-        match lt with
+        expr_type_check left ctx class_table >>= function
         | TInt -> (
-            expr_type_check right ctx class_table >>= fun rt ->
-            match rt with
+            expr_type_check right ctx class_table >>= function
             | TInt -> return TBool
             | _ -> error "Wrong right type: must be <int>")
         | _ -> error "Wrong left type: must be <int>")
     | Equal (left, right) | NotEqual (left, right) -> (
-        expr_type_check left ctx class_table >>= fun lt ->
-        match lt with
+        expr_type_check left ctx class_table >>= function
         | TInt -> (
-            expr_type_check right ctx class_table >>= fun rt ->
-            match rt with
+            expr_type_check right ctx class_table >>= function
             | TInt -> return TBool
             | _ -> error "Wrong right type in equals-expression: must be <int>")
         | TString -> (
-            expr_type_check right ctx class_table >>= fun rt ->
-            match rt with
+            expr_type_check right ctx class_table >>= function
             | TString -> return TBool
             | _ ->
                 error "Wrong right type in equals-expression: must be <string>")
         | TBool -> (
-            expr_type_check right ctx class_table >>= fun rt ->
-            match rt with
+            expr_type_check right ctx class_table >>= function
             | TBool -> return TBool
             | _ -> error "Wrong right type in equals-expression: must be <bool>"
             )
         | TRef left_key -> (
-            expr_type_check right ctx class_table >>= fun rt ->
-            match rt with
+            expr_type_check right ctx class_table >>= function
             | TRef right_key when left_key = right_key -> return TBool
             | TRef "null" -> return TBool
             | _ -> error "Wrong class type in equals-expression")
@@ -324,7 +310,10 @@ module Interpretation (M : MONADERROR) = struct
                   >>= fun parent_class ->
                   if parent_class.is_class then return parent
                   else find_parent_class tail
-              | [] -> error ("The current " ^ key ^ " class has no parent class")
+              | [] ->
+                  error
+                    (String.concat " "
+                       [ "The current"; key; "class has no parent class." ])
             in
             find_parent_class curr_class.parent_key >>= fun par_k ->
             return (TRef par_k)
@@ -341,8 +330,7 @@ module Interpretation (M : MONADERROR) = struct
         check_method curr_class method_ident args ctx class_table >>= fun mr ->
         return mr.method_type
     | AccessByPoint (obj_expr, Identifier f_key) -> (
-        expr_type_check obj_expr ctx class_table >>= fun obj_expr_type ->
-        match obj_expr_type with
+        expr_type_check obj_expr ctx class_table >>= function
         | TRef "null" -> error "NullReferenceException"
         | TRef obj_key -> (
             get_elem_if_present_m obj_key class_table >>= fun obj_class ->
@@ -352,8 +340,7 @@ module Interpretation (M : MONADERROR) = struct
             | Some var_field -> return var_field.field_type)
         | _ -> error "Wrong type: must be an object of some class")
     | AccessByPoint (obj_expr, CallMethod (Identifier method_ident, args)) -> (
-        expr_type_check obj_expr ctx class_table >>= fun obj_expr_type ->
-        match obj_expr_type with
+        expr_type_check obj_expr ctx class_table >>= function
         | TRef "null" -> error "NullReferenceException"
         | TRef obj_key ->
             get_elem_if_present_m obj_key class_table >>= fun obj_class ->
@@ -362,7 +349,9 @@ module Interpretation (M : MONADERROR) = struct
         | _ -> error "Wrong type: must be an object of some class")
     | ClassCreation (Name class_name, args) -> (
         match get_element_option class_name class_table with
-        | None -> error ("No such class implemented: " ^ class_name ^ "\n")
+        | None ->
+            error
+              (String.concat " " [ "No such class implemented:"; class_name ])
         | Some cl_elem -> (
             match args with
             | [] -> return (TRef class_name)
@@ -396,8 +385,7 @@ module Interpretation (M : MONADERROR) = struct
         match lt with
         | TVoid -> error "Can't assign anything to <void>"
         | TRef cleft_key -> (
-            expr_type_check right ctx class_table >>= fun rt ->
-            match rt with
+            expr_type_check right ctx class_table >>= function
             | TRef "null" -> return (TRef cleft_key)
             | TRef cright_key ->
                 check_classname_assign cleft_key cright_key class_table
@@ -406,8 +394,7 @@ module Interpretation (M : MONADERROR) = struct
             expr_type_check right ctx class_table >>= fun rt ->
             if lt = rt then return rt else error "Wrong assign types")
     | Cast (left_type, right) -> (
-        expr_type_check right ctx class_table >>= fun rt ->
-        match rt with
+        expr_type_check right ctx class_table >>= function
         | TInt when left_type = TInt -> return TInt (* (int)int *)
         | TInt when left_type = TBool -> return TBool (* (bool)int *)
         | TBool when left_type = TBool -> return TBool (* (bool)bool *)
@@ -423,8 +410,13 @@ module Interpretation (M : MONADERROR) = struct
       return (TRef cright_key)
     else
       error
-        ("Cannot assign the most general type " ^ cright_key
-       ^ " to the least general " ^ cleft_key)
+        (String.concat " "
+           [
+             "Cannot assign the most general type";
+             cright_key;
+             "to the least general";
+             cleft_key;
+           ])
 
   (** Сheck that the left class is a parent of the right *)
   and check_classname_bool cleft_key cright_key class_table =
@@ -551,22 +543,18 @@ module Interpretation (M : MONADERROR) = struct
       =
     match curr_obj_value with
     | ObjectReference { class_key = curr_obj_key; _ } ->
-        if is_public modifier_list then true
-        else if is_private modifier_list && called_class = curr_obj_key then
-          true
-        else if
-          is_protected modifier_list
-          && check_parent_tree class_table curr_obj_key called_class
-          (* Can get access to protected child elements from the parent class *)
-        then true
-        else false
+        is_public modifier_list
+        || (is_private modifier_list && called_class = curr_obj_key)
+        || is_protected modifier_list
+           && check_parent_tree class_table curr_obj_key called_class
+        (* Can get access to protected child elements from the parent class *)
     | _ -> false
 
   (** Delete nested variables (e.g. in loops) *)
   let delete_scope_var : context -> context M.t =
    fun in_ctx ->
     let delete key (el : variable) ctx =
-      if el.visibility_level = ctx.visibility_level then
+      if el.vis_lvl = ctx.visibility_level then
         { ctx with var_table = KeyMap.remove key ctx.var_table }
       else ctx
     in
@@ -821,7 +809,7 @@ module Interpretation (M : MONADERROR) = struct
                             is_const = is_const modifier;
                             assignment_count = 0;
                             v_value = get_type_default_value vars_type;
-                            visibility_level = var_ctx.visibility_level;
+                            vis_lvl = var_ctx.visibility_level;
                           }
                         in
                         return (add_var_to_context var_ctx new_var)
@@ -849,7 +837,7 @@ module Interpretation (M : MONADERROR) = struct
                               is_const = is_const modifier;
                               assignment_count = 1;
                               v_value = var_value;
-                              visibility_level = var_expr_ctx.visibility_level;
+                              vis_lvl = var_expr_ctx.visibility_level;
                             }
                           in
                           return (add_var_to_context var_expr_ctx new_var)
@@ -928,8 +916,7 @@ module Interpretation (M : MONADERROR) = struct
       | LessOrEqual (left, right) -> eval_op left right ( ==<< )
       | MoreOrEqual (left, right) -> eval_op left right ( >>== )
       | Equal (left, right) -> (
-          expr_type_check left ctx class_table >>= fun l_type ->
-          match l_type with
+          expr_type_check left ctx class_table >>= function
           | TRef l_key ->
               get_elem_if_present_m l_key class_table >>= fun left_clr ->
               get_elem_if_present_m equals_key left_clr.methods_table
@@ -949,8 +936,7 @@ module Interpretation (M : MONADERROR) = struct
               return { ctx with last_expr_result = var_by_id.v_value }
           | None -> (
               try
-                let frt object_ref =
-                  match object_ref with
+                let frt = function
                   | NullObjectReference ->
                       raise (Invalid_argument "NullReferenceException")
                   | ObjectReference object_class ->
@@ -1015,7 +1001,7 @@ module Interpretation (M : MONADERROR) = struct
           >>= fun curr_class_key ->
           get_elem_if_present_m curr_class_key class_table >>= fun curr_class ->
           let current_class_parent_key =
-            find_parent_class_key curr_class.parent_key class_table None
+            find_parent_class_key curr_class.parent_key class_table
           in
           match current_class_parent_key with
           | None -> error "Bad base(...) call usage: this class has no parent"
@@ -1079,8 +1065,13 @@ module Interpretation (M : MONADERROR) = struct
                 }
           | _ ->
               error
-                ("Cannot cast " ^ show_values obj_value ^ " to "
-               ^ show_types left_type))
+                (String.concat " "
+                   [
+                     "Cannot cast";
+                     show_values obj_value;
+                     "to";
+                     show_types left_type;
+                   ]))
       | AccessByPoint (obj_expr, Identifier f_key) -> (
           eval_expr obj_expr ctx class_table >>= fun octx ->
           let obj = octx.last_expr_result in
@@ -1102,8 +1093,12 @@ module Interpretation (M : MONADERROR) = struct
               let is_cast_to_interface =
                 if not cast_class.is_class then
                   error
-                    ("Cannot access to " ^ cast_class.this_key
-                   ^ " interface field. Interface doesn't have fields")
+                    (String.concat " "
+                       [
+                         "Cannot access to";
+                         cast_class.this_key;
+                         "interface field. Interface doesn't have fields";
+                       ])
                 else
                   (* Check that parent (cast class) have this field *)
                   get_elem_if_present_m f_key cast_class.fields_table
@@ -1115,7 +1110,10 @@ module Interpretation (M : MONADERROR) = struct
                   | true ->
                       get_elem_if_present_m f_key frt >>= fun fld ->
                       return { octx with last_expr_result = fld.field_value }
-                  | false -> error ("Cannot access to " ^ cl_k ^ "." ^ f_key)
+                  | false ->
+                      error
+                        (String.concat ""
+                           [ "Cannot access to "; cl_k; "."; f_key ])
               in
               is_cast_to_interface
           | _ -> error "Cannot access field of non-object")
@@ -1132,8 +1130,10 @@ module Interpretation (M : MONADERROR) = struct
               match get_element_option cl_k class_table with
               | None ->
                   error
-                    ("No such class " ^ cl_k ^ " to call " ^ method_name
-                   ^ " method")
+                    (String.concat " "
+                       [
+                         "No such class"; cl_k; "to call"; method_name; "method";
+                       ])
               | Some obj_class -> (
                   let cast_class_helper =
                     match interface with
@@ -1155,15 +1155,22 @@ module Interpretation (M : MONADERROR) = struct
                       nc >>= fun nearest_child ->
                       match
                         get_element_option
-                          (cast_class.this_key ^ "." ^ method_before_cast.key)
+                          (String.concat ""
+                             [
+                               cast_class.this_key; "."; method_before_cast.key;
+                             ])
                           nearest_child.methods_table
                       with
                       | None -> return (nearest_child, method_before_cast.key)
                       | Some _ ->
                           return
                             ( nearest_child,
-                              cast_class.this_key ^ "." ^ method_before_cast.key
-                            )
+                              String.concat ""
+                                [
+                                  cast_class.this_key;
+                                  ".";
+                                  method_before_cast.key;
+                                ] )
                     else
                       last_overriden_class >>= fun last_ovr ->
                       return (last_ovr, method_before_cast.key)
@@ -1179,7 +1186,8 @@ module Interpretation (M : MONADERROR) = struct
                     | true -> return mr
                     | false ->
                         error
-                          ("Cannot access to " ^ cl_k ^ "." ^ meth_name ^ "()")
+                          (String.concat ""
+                             [ "Cannot access to "; cl_k; "."; meth_name; "()" ])
                   in
                   check_method_modifiers >>= fun mr ->
                   (match mr.body with
@@ -1193,20 +1201,20 @@ module Interpretation (M : MONADERROR) = struct
                   >>= fun (new_vt, new_ctx) ->
                   eval_stmt m_body
                     {
-                      cur_object = current_class;
-                      var_table = new_vt;
-                      last_expr_result = VVoid;
-                      runtime_signal = NoSignal;
-                      curr_method_type = mr.method_type;
-                      is_main_scope = false;
-                      nested_loops_cnt = 0;
-                      visibility_level = 0;
-                      cur_constr_key = None;
-                      prev_context = Some ctx;
-                      obj_created_cnt = ctx.obj_created_cnt;
-                      is_creation = false;
-                      constr_affilation = None;
+                      ctx with
                       class_for_cast = Some obj_class;
+                      constr_affilation = None;
+                      is_creation = false;
+                      prev_context = Some ctx;
+                      cur_constr_key = None;
+                      visibility_level = 0;
+                      nested_loops_cnt = 0;
+                      is_main_scope = false;
+                      curr_method_type = mr.method_type;
+                      runtime_signal = NoSignal;
+                      last_expr_result = VVoid;
+                      var_table = new_vt;
+                      cur_object = current_class;
                     }
                     class_table
                   >>= fun m_res_ctx ->
@@ -1242,8 +1250,12 @@ module Interpretation (M : MONADERROR) = struct
           get_elem_if_present_m class_name class_table >>= fun obj_class ->
           if obj_class.is_abstract || not obj_class.is_class then
             error
-              ("Creation of interface or abstract classes " ^ obj_class.this_key
-             ^ " not allowed")
+              (String.concat " "
+                 [
+                   "Creation of interface or abstract classes";
+                   obj_class.this_key;
+                   "not allowed";
+                 ])
           else
             check_constructor obj_class creation_args ctx class_table
             >>= fun curr_constr ->
@@ -1288,7 +1300,7 @@ module Interpretation (M : MONADERROR) = struct
                                 error
                                   ("Wrong assign type in field declaration. \
                                     Cannot assign <null> to not reference \
-                                    field " ^ f_name ^ "."))
+                                    field " ^ f_name))
                         | TRef cright -> (
                             match curr_f_type with
                             | TRef cleft ->
@@ -1337,7 +1349,7 @@ module Interpretation (M : MONADERROR) = struct
                       fields_tail
               in
               let current_class_parent_key =
-                find_parent_class_key curr_class.parent_key class_table None
+                find_parent_class_key curr_class.parent_key class_table
               in
               match current_class_parent_key with
               | None -> helper_init KeyMap.empty init_ctx field_tuples
@@ -1528,7 +1540,10 @@ module Interpretation (M : MONADERROR) = struct
         else
           update_object_state_exn obj_ref field_name new_val obj_evaled_ctx
           |> fun new_context -> return new_context
-      else error ("No such field " ^ field_name ^ " in class " ^ class_key)
+      else
+        error
+          (String.concat " "
+             [ "No such field"; field_name; "in class"; class_key ])
     with
     | Invalid_argument m | Failure m -> error m
     | Not_found -> error ("No such field " ^ field_name)
@@ -1708,8 +1723,7 @@ module Interpretation (M : MONADERROR) = struct
   (** Make table of variables by arguments. Concatenate arguments for calling method and base/this method/constructor and return variable table of args. Context doesn't update *)
   and prepare_table_with_args_exn ht args_l m_arg_list pr_ctx class_table =
     mfold_left2
-      (fun (h_ht, hctx) arg tn_pair ->
-        match tn_pair with
+      (fun (h_ht, hctx) arg -> function
         | head_type, Name head_name ->
             eval_expr arg hctx class_table >>= fun he_ctx ->
             let add_field =
@@ -1720,7 +1734,7 @@ module Interpretation (M : MONADERROR) = struct
                   is_const = false;
                   assignment_count = 1;
                   v_value = he_ctx.last_expr_result;
-                  visibility_level = 0;
+                  vis_lvl = 0;
                 }
                 h_ht
             in
@@ -1733,7 +1747,7 @@ module Interpretation (M : MONADERROR) = struct
     match current_body with
     | StatementBlock body -> (
         let current_class_parent_key =
-          find_parent_class_key current_class.parent_key class_table None
+          find_parent_class_key current_class.parent_key class_table
         in
         match (current_call_constructor, current_class_parent_key) with
         | Some (CallMethod (Base, _)), None ->

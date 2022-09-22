@@ -61,7 +61,7 @@
                                                  ext_interface = None;
                                                  field_references_table = [];
                                                  number = 1 }));
-            visibility_level = 0 },
+            vis_lvl = 0 },
      "b": { v_type = TRef ("B"); v_key = "b"; is_const = false;
             assignment_count = 1;
             v_value =
@@ -69,7 +69,7 @@
                                                  ext_interface = None;
                                                  field_references_table = [];
                                                  number = 2 }));
-            visibility_level = 0 },
+            vis_lvl = 0 },
      "c": { v_type = TRef ("C"); v_key = "c"; is_const = false;
             assignment_count = 1;
             v_value =
@@ -77,7 +77,7 @@
                                                  ext_interface = None;
                                                  field_references_table = [];
                                                  number = 3 }));
-            visibility_level = 0 },
+            vis_lvl = 0 },
      "d": { v_type = TRef ("D"); v_key = "d"; is_const = false;
             assignment_count = 1;
             v_value =
@@ -85,7 +85,7 @@
                                                  ext_interface = None;
                                                  field_references_table = [];
                                                  number = 4 }));
-            visibility_level = 0 },
+            vis_lvl = 0 },
      "d1": { v_type = TRef ("D1"); v_key = "d1"; is_const = false;
              assignment_count = 1;
              v_value =
@@ -93,7 +93,7 @@
                                                   ext_interface = None;
                                                   field_references_table = [];
                                                   number = 5 }));
-             visibility_level = 0 },
+             vis_lvl = 0 },
      "e": { v_type = TRef ("E"); v_key = "e"; is_const = false;
             assignment_count = 1;
             v_value =
@@ -101,7 +101,7 @@
                                                  ext_interface = None;
                                                  field_references_table = [];
                                                  number = 6 }));
-            visibility_level = 0 },
+            vis_lvl = 0 },
      "g": { v_type = TRef ("G"); v_key = "g"; is_const = false;
             assignment_count = 1;
             v_value =
@@ -109,7 +109,7 @@
                                                  ext_interface = None;
                                                  field_references_table = [];
                                                  number = 7 }));
-            visibility_level = 0 },
+            vis_lvl = 0 },
      "h": { v_type = TRef ("H"); v_key = "h"; is_const = false;
             assignment_count = 1;
             v_value =
@@ -117,7 +117,7 @@
                                                  ext_interface = None;
                                                  field_references_table = [];
                                                  number = 8 }));
-            visibility_level = 0 },
+            vis_lvl = 0 },
      ];
     last_expr_result = VVoid; runtime_signal = NoSignal;
     curr_method_type = TVoid; is_main_scope = true; nested_loops_cnt = 0;

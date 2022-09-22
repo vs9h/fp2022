@@ -1,7 +1,10 @@
+(** Copyright 2021-2022, Pavel Alimov *)
+
+(** SPDX-License-Identifier: LGPL-3.0-or-later *)
 open Csharpoop_lib.Ast
+open Csharpoop_lib.KeyMap
 open Csharpoop_lib.Parser
-open Csharpoop_lib.ClassLoader.ClassLoader (Csharpoop_lib.SupportTypes.Result)
-open Csharpoop_lib.SupportTypes
+open Csharpoop_lib.ClassLoader.ClassLoader (Csharpoop_lib.ResultMonad.Result)
 
 let show_hashtbl ht pp_element = KeyMap.pp pp_element Format.std_formatter ht
 let show_class_table ht = show_hashtbl ht pp_table_class
