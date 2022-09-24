@@ -2,14 +2,10 @@
 
 (** SPDX-License-Identifier: LGPL-3.0-or-later *)
 
-open Csharpoop_lib.Ast
 open Csharpoop_lib.KeyMap
 open Csharpoop_lib.Parser
 open Csharpoop_lib.ClassLoader.ClassLoader (Csharpoop_lib.ResultMonad.Result)
 open Csharpoop_lib.Interpreter.Interpretation (Csharpoop_lib.ResultMonad.Result)
-
-let show_hashtbl ht pp_element = KeyMap.pp pp_element Format.std_formatter ht
-let show_class_table ht = show_hashtbl ht pp_table_class
 
 let interpret_test program class_table =
   match load program class_table with

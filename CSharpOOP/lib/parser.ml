@@ -51,7 +51,9 @@ module Expression = struct
     | s -> return s
 
   let name = ident >>= fun name -> return (Name name)
-  let concatenate_name_with_sep sep (Name n1) (Name n2) = Name (n1 ^ sep ^ n2)
+
+  let concatenate_name_with_sep sep (Name n1) (Name n2) =
+    Name (String.concat "" [ n1; sep; n2 ])
 
   let%test _ = apply name "Name" = Some (Name "Name")
   let%test _ = apply name "   Name" = Some (Name "Name")

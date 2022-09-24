@@ -303,8 +303,7 @@ module Interpretation (M : MONADERROR) = struct
         | ObjectReference { class_key = key; _ } ->
             get_elem_if_present_m key class_table >>= fun curr_class ->
             (* Search parent class, not interface, in table of classes *)
-            let rec find_parent_class parents_list =
-              match parents_list with
+            let rec find_parent_class = function
               | parent :: tail ->
                   get_elem_if_present_m parent class_table
                   >>= fun parent_class ->
@@ -788,8 +787,7 @@ module Interpretation (M : MONADERROR) = struct
           | Some Const -> true
           | _ -> false
         in
-        let rec helper_vardec v_list var_ctx =
-          match v_list with
+        let rec helper_vardec var_ctx = function
           | [] -> return var_ctx
           | (Name name, var_expr_opt) :: tail -> (
               match var_ctx.cur_object with
@@ -861,9 +859,9 @@ module Interpretation (M : MONADERROR) = struct
                             error
                               ("Wrong value type for declared variable: "
                              ^ show_types var_expr_type)))
-                  >>= fun head_ctx -> helper_vardec tail head_ctx)
+                  >>= fun head_ctx -> helper_vardec head_ctx tail)
         in
-        helper_vardec var_list sctx
+        helper_vardec sctx var_list
     | Print print_expr ->
         eval_expr print_expr sctx class_table >>= fun new_ctx ->
         let printer = function
@@ -1325,8 +1323,7 @@ module Interpretation (M : MONADERROR) = struct
                         in
                         return (help_ctx, new_field))
                     >>= fun (head_ctx, head_ht) ->
-                    let get_obj_num obj =
-                      match obj with
+                    let get_obj_num = function
                       | NullObjectReference ->
                           raise (Invalid_argument "NullReferenceException")
                       | ObjectReference curr_obj -> curr_obj.number

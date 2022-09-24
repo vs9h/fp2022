@@ -103,4 +103,4 @@ public class Child : Person
 }
 |})
 
-let test = print_list (List.map show_objects parse_result)
+let () = print_list (List.map show_objects parse_result)

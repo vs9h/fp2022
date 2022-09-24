@@ -3,30 +3,38 @@
 (** SPDX-License-Identifier: LGPL-3.0-or-later *)
 
 type modifiers =
-  | Public
-  | Private
-  | Protected
-  | Static
-  | Const
-  | Virtual
-  | Override
-  | Abstract
-  | New
+  | Public  (** Public modifier *)
+  | Private  (** Private modifier *)
+  | Protected  (** Protected modifier *)
+  | Static  (** Static modifier *)
+  | Const  (** Const modifier *)
+  | Virtual  (** Virtual modifier *)
+  | Override  (** Override modifier *)
+  | Abstract  (** Abstract modifier *)
+  | New  (** New modifier *)
 
 val pp_modifiers : Ppx_show_runtime.Format.formatter -> modifiers -> unit
 val show_modifiers : modifiers -> string
 
-type types = TInt | TVoid | TString | TRef of string | TBool
+type types =
+  | TInt  (** Integer type of element (method/variable) *)
+  | TVoid  (** Void type of element (method/variable) *)
+  | TString  (** String type of element (method/variable) *)
+  | TRef of string
+      (** Reference (with string name of type) type of element (method/variable) *)
+  | TBool  (** Bool type of element (method/variable) *)
 
 val pp_types : Ppx_show_runtime.Format.formatter -> types -> unit
 val show_types : types -> string
 
 type values =
-  | VInt of int
-  | VBool of bool
+  | VInt of int  (** Integer value type of calculation (expression/variable) *)
+  | VBool of bool  (** Bool value type of calculation (expression/variable) *)
   | VString of string
-  | VVoid
+      (** String value type of calculation (expression/variable) *)
+  | VVoid  (** Void value type of calculation (expression/variable) *)
   | VObjectReference of object_references
+      (** Reference value type of calculation (expression/variable) *)
 
 and field_references = {
   key : string;
@@ -37,13 +45,14 @@ and field_references = {
 }
 
 and object_references =
-  | NullObjectReference
+  | NullObjectReference  (** Null reference *)
   | ObjectReference of {
       class_key : string;
       ext_interface : string option;
       field_references_table : field_references KeyMap.KeyMap.t;
       number : int;
     }
+      (** Not null reference with reference type name, access interface, fields table and creation number *)
 
 val pp_values : Ppx_show_runtime.Format.formatter -> values -> unit
 
@@ -57,64 +66,96 @@ val show_values : values -> string
 val show_field_references : field_references -> string
 val show_object_references : object_references -> string
 
-type names = Name of string
+type names =
+  | Name of string
+      (** Name of instanse (e.g. [MyClass], [someVar], [MyFunc]) *)
 
 val pp_names : Ppx_show_runtime.Format.formatter -> names -> unit
 val show_names : names -> string
 
 type expressions =
-  | Add of expressions * expressions
+  | Add of expressions * expressions  (** Sum expression ([expr_1 + expr_2]) *)
   | Sub of expressions * expressions
+      (** Substraction expression ([expr_1 - expr_2]) *)
   | Mult of expressions * expressions
+      (** Multiplication expression ([expr_1 * expr_2]) *)
   | Div of expressions * expressions
+      (** Division expression ([expr_1 / expr_2]) *)
   | PostInc of expressions
+      (** Post increment (equivalent to [v = v + 1]) expression ([expr_1++]) *)
   | PostDec of expressions
+      (** Post decrement (equivalent to [v = v - 1]) expression ([expr_1--]) *)
   | PrefInc of expressions
+      (** Prefix increment (equivalent to [v = v + 1]) expression ([++expr_1]) *)
   | PrefDec of expressions
+      (** Prefix decrement (equivalent to [v = v - 1]) expression ([--expr_1]) *)
   | Mod of expressions * expressions
+      (** Modulo expression ([expr_1 % expr_2]) *)
   | And of expressions * expressions
+      (** Logic [and] expression ([expr_1 && expr_2]) *)
   | Or of expressions * expressions
-  | Not of expressions
+      (** Logic [or] expression ([expr_1 || expr_2]) *)
+  | Not of expressions  (** Logic [not] expression ([!expr_1]) *)
   | Equal of expressions * expressions
+      (** Equal expression ([expr_1 == expr_2]) *)
   | NotEqual of expressions * expressions
+      (** Not equal expression ([expr_1 != expr_2]) *)
   | Less of expressions * expressions
+      (** Less expression ([expr_1 < expr_2]) *)
   | More of expressions * expressions
+      (** More expression ([expr_1 > expr_2]) *)
   | LessOrEqual of expressions * expressions
+      (** Less or equal expression ([expr_1 <= expr_2]) *)
   | MoreOrEqual of expressions * expressions
-  | This
-  | Base
-  | Null
-  | Value of values
-  | Identifier of string
+      (** More or equal expression ([expr_1 >= expr_2]) *)
+  | This  (** This token for access to current class fields/methods *)
+  | Base  (** This token for access to parent class fields/methods *)
+  | Null  (** Null expression (e.g. [SomeClass a = null]) *)
+  | Value of values  (** Value expression (e.g. [int a = 1]) *)
+  | Identifier of string  (** Identifier of variable (e.g. [a = b]) *)
   | ClassCreation of names * expressions list
+      (** Class creation (e.g. [SomeClass a = new SomeClass(1, 'a')]) *)
   | CallMethod of expressions * expressions list
+      (** Call method (e.g. [Func(1, 'a')]) *)
   | AccessByPoint of expressions * expressions
+      (** Access by point to class member (e.g. [a.F()]) *)
   | Assign of expressions * expressions
-  | Cast of types * expressions
+      (** Assign to variable (e.g. [a = b]) *)
+  | Cast of types * expressions  (** Cast expression (e.g. [(A)b]) *)
 
 and statements =
   | Expression of expressions
+      (** Expression as statement (e.g. [a = b], [a--], [a.F()]) *)
   | StatementBlock of statements list
+      (** Block of statements (e.g. [{s_1; s_2;}]) *)
   | If of expressions * statements * statements option
+      (** [if-then] or [if-then-else] statement *)
   | While of expressions * statements
+      (** [while (bool) StatementBlock] statement *)
   | For of
       statements option * expressions option * expressions list * statements
-  | Break
-  | Continue
-  | Return of expressions option
+      (** For statement (e.g. [for (int i = 0; i < n; i++) something]) *)
+  | Break  (** [break] statement *)
+  | Continue  (** [continue] statement *)
+  | Return of expressions option  (** [return] statement (e.g. [return 1])*)
   | VariableDecl of modifiers option * types * (names * expressions option) list
-  | Print of expressions
+      (** Declaration of variable statement. Only [const] or without modifier *)
+  | Print of expressions  (** Print statement (e.g. [Console.WriteLine(1)])*)
 
 and fields =
-  | Field of types * (names * expressions option) list
+  | Field of types * (names * expressions option) list  (** Fields of object *)
   | Method of types * names * (types * names) list * statements option
+      (** Methods of object *)
   | Constructor of
       names * (types * names) list * expressions option * statements
+      (** Constructors of object *)
 
 and objects =
   | Class of
       modifiers list * names * names list * (modifiers list * fields) list
+      (** Class *)
   | Interface of modifiers * names * names list * (modifiers list * fields) list
+      (** Interface *)
 
 val pp_expressions : Ppx_show_runtime.Format.formatter -> expressions -> unit
 val pp_statements : Ppx_show_runtime.Format.formatter -> statements -> unit
@@ -125,7 +166,11 @@ val show_statements : statements -> string
 val show_fields : fields -> string
 val show_objects : objects -> string
 
-type signal = WasBreak | WasContinue | WasReturn | NoSignal
+type signal =
+  | WasBreak  (** Is there break signal (e.g. in loop) *)
+  | WasContinue  (** Is there continue signal (e.g. in loop) *)
+  | WasReturn  (** Is there return signal (e.g. in loop) *)
+  | NoSignal  (** Is there no signal *)
 
 val pp_signal : Ppx_show_runtime.Format.formatter -> signal -> unit
 val show_signal : signal -> string
