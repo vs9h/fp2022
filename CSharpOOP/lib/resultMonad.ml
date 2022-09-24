@@ -16,7 +16,6 @@ module type MONADERROR = sig
   val error : string -> 'a t
 end
 
-
 module Result = struct
   type 'a t = ('a, string) Result.t
 
