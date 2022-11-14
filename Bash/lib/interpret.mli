@@ -43,5 +43,6 @@ module Interpret (M : MonadFail) : sig
     }
   [@@deriving show { with_path = false }]
 
-  val eval : script -> environment M.t
+  val default_env : environment
+  val eval : ?env:environment -> script -> environment M.t
 end
