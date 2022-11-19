@@ -20,12 +20,6 @@ type std_fd =
 (* get int by standard file descriptor *)
 val fd_to_int : std_fd -> int
 
-(* order is important *)
-val std_fd_types : std_fd list
-
-(* function-resolver for default std descriptors *)
-val num_to_std_fd : int -> Unix.file_descr
-
 (* List of standart fds *)
 val std_fds : Unix.file_descr list
 

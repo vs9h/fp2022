@@ -91,7 +91,9 @@ module Interpret (M : MonadFail) = struct
     IntMap.iter
       (fun n fd ->
         match n with
-        | 0 | 1 | 2 -> dup2 fd (num_to_std_fd n)
+        | 0 -> dup2 fd Unix.stdin
+        | 1 -> dup2 fd Unix.stdout
+        | 2 -> dup2 fd Unix.stderr
         | _ -> ())
       fds
   ;;
@@ -833,7 +835,8 @@ let test_ok, test_fail =
     | Ok script -> eval_impl script
     | Error e ->
       Parser.pp_error Format.std_formatter e;
-      failwith "Error while parsing test input (assuming the test gets the correct input)"
+      Result.fail
+        "Error while parsing test input (assuming the test gets the correct input)"
   in
   let ok ?(local_vars = StrMap.empty) ?(global_vars = StrMap.empty) ?(retcode = 0) input =
     match test_inner input with
