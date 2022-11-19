@@ -22,19 +22,8 @@ let fd_to_int = function
   | StdErr -> 2
 ;;
 
-(* order is important *)
-let std_fd_types = [ StdIn; StdOut; StdErr ]
-
-(* function-resolver for default std descriptors *)
-let num_to_std_fd = function
-  | 0 -> Unix.stdin
-  | 1 -> Unix.stdout
-  | 2 -> Unix.stderr
-  | _ -> failwith "Cannot resolve fd"
-;;
-
 (* List of standart fds *)
-let std_fds = List.map (fun x -> num_to_std_fd (fd_to_int x)) std_fd_types
+let std_fds = [ Unix.stdin; Unix.stdout; Unix.stderr ]
 
 (* structures *)
 
