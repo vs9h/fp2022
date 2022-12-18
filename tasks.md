@@ -646,6 +646,7 @@
 1. С# с многофайловостью, [мультиметодами](https://en.wikipedia.org/wiki/Multiple_dispatch#C#) и экстеншинами
 1. OCaml с первоклассными модулями
 1. 
+1. BibTex (описание, примеры и способы улучшения рассказал [Guy Steel](https://www.youtube.com/watch?v=OhZQabtOMdI))
 1. Aspectual Caml?
 1. Aspect C# ?
 1. C# c [Goto](https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/goto) и ещё чем-нибудь
