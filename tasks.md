@@ -6,11 +6,8 @@
    * Анонимные функции можно не делать
    * Наследование: public, private, protected, virtual
       * diamond problem1. 
-1. F# (Быков на F#) <details><summary open>Подробнее</summary></details>
+1. F# (Быков на F#) 
 1. Python (Бакаев)
-   <details><summary>Подробнее</summary>
-   this one starts expanded because of the "open"
-   </details>
 1. Стрёмное подмножество c# <details><summary>Дмитрий Кузнецов</summary>
    * Async/await
    * Стрёмный LINQ синтаксис: `select ... from ... where ...`
@@ -653,6 +650,7 @@
 1. Scala где есть и аргументы call-by-value, и аргументы call-by-name. И ещё что-нибудь
 1. Refinement types by [Ranjit Jhala](https://github.com/ranjitjhala/sprite-lang)
 1. Sed (а тестировать будем примером реализации [brainfuck на sed](https://github.com/stedolan/bf.sed))
+1. [Gcaml](http://www.yl.is.s.u-tokyo.ac.jp/~furuse/gcaml/index.html)
 1. Smalltalk
 2. Ideal Parallel Algol
 3. AWK
