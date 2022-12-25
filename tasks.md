@@ -672,6 +672,7 @@
 21. Wolfram Mathematica (там синтаксис [очень стрёмный](https://22century.ru/popular-science-publications/wolfram-mathematica))
 22. Erlang [на основе карамели](https://discuss.ocaml.org/t/ann-erlang-0-0-14-a-toolkit-to-manipulate-erlang-sources/)
 23. Curry/Mercury?
+24. [Jsonet](https://jsonnet.org/ref/language.html) -- template language
 
 
 ##### Прочие замечания
