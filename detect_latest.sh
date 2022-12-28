@@ -1,21 +1,36 @@
 #!/usr/bin/env sh
 
-i=0
+git remote | grep upstream
+if [ $? -ne 0 ]
+then
+  git remote add upstream https://github.com/Kakadu/fp2022.git
+  git fetch upstream master
+fi
 
-while true;
+echo ""
+CHANGES=`git diff-tree $(git merge-base upstream/master $1)..$1 | rev | cut -f 1 | rev`
+
+set answer=""
+for dir in $CHANGES
 do
-  n=$((i+1))
-  LASTDIR=`git diff --name-only HEAD~$i HEAD~$n | tail -n 1 | cut -f 1 -d'/'`
-  i=$((i+1))
-
-  if [ -d "$LASTDIR" ] && [ "$LASTDIR" != ".github" ]; then
-    echo "latest=$LASTDIR"
-    break
+  #echo $dir
+  if [ -d "$dir" ]; then
+    if [ "$dir" != ".github" ]; then
+      answer="$answer\n$dir"
+      #echo dir answer="$answer"
+    fi
   else
-    >&2 printf "The variant '$LASTDIR' skipped.\n"
-  fi
-
-  if [ $i -gt 20 ]; then
-    exit 2
+    :
   fi
 done
+
+topnames=`echo $answer | sed '/^$/d' | uniq`
+rez=`echo $topnames | wc -l`
+if [ "$rez" = "1" ]; then
+  echo "latest=$topnames"
+  exit 0
+else
+  echo "Too many cancdidates ($rez) to be a last solution"
+  echo "'$topnames'"
+  exit 1
+fi
