@@ -53,7 +53,7 @@ jobs:
       # Smart link about setting environment variables
       # https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions#setting-an-environment-variable
       - run: |
-          sh -x ./detect_latest.sh "pull/${{ steps.branch-name.outputs.ref_branch }}" >> $GITHUB_ENV
+          sh -x ./detect_latest_pr.sh "pull/${{ steps.branch-name.outputs.ref_branch }}" >> $GITHUB_ENV
           echo "${{ env.latest }}"
 
       - name: Installing dependencies
