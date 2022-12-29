@@ -673,6 +673,7 @@
 22. Erlang [на основе карамели](https://discuss.ocaml.org/t/ann-erlang-0-0-14-a-toolkit-to-manipulate-erlang-sources/)
 23. Curry/Mercury?
 24. [Jsonet](https://jsonnet.org/ref/language.html) -- template language
+25. Copattern maching по моему докладу		
 
 
 ##### Прочие замечания
