@@ -1,17 +1,23 @@
-(** Copyright 2021-2022, andreyizrailev and contributors *)
+(** Copyright 2021-2023, andreyizrailev and contributors *)
 
 (** SPDX-License-Identifier: LGPL-3.0-or-later *)
 
-open Ast
 open Utils
+open MonadError
 
-module Interpreter : sig
+module Interpreter (M : MonadError) : sig
+  open Ast.Ast(M)
+
+  (* Current state of execution *)
   type state_t =
     { reg_map : int IntMap.t
         (* Map from register ids to their values.
          Note that we won't have registers like "ax" here since their value can be
          obtained from "eax". So, the map only contains "primary" registers, i.e.
          ones that are not part of the others *)
+    ; xmm_reg_map : int list IntMap.t
+        (* Map from xmm register ids to lists of 4 elements that represent
+           their values *)
     ; stack : int ListStack.t (* Program stack in an oridnary sense *)
     ; flags : int
         (* Updated after each cmp command. Negative if the left
@@ -27,5 +33,5 @@ module Interpreter : sig
     }
   [@@deriving show]
 
-  val eval_whole : ast -> state_t
+  val eval_whole : ast -> state_t M.t
 end
