@@ -17,23 +17,13 @@ License: LGPL for implementation code + WTFPL for test examles in miniLanguage
 Author: Ivan Morozko
 
 TODO:
-- Add recipe definiton via `;` on the targets line
-- Support multiline recipes
-- Add variables
-    - Recursively expanded variable (`=`)
-    - Simply expanded variables (`:=`)
-    - Conditional variable assignment (`?=`)
+- Variables
     - Multi-line variables (`define`)
-    - Variables substitution (`$(var)`)
     - `$$`
     - `$(MAKE)` variable
 - Add special variables
     - `.DEFAULT_GOAL`
     - `.PHONY`
-- Add recipe echoing aka prefixing recipe with `@`
-- Add implicit rules
-    - Add pattern rule definition (when the target contains `%`)
-    - Add automatic variable `$*`
 - Add functions
     - `call`
         - Support recursive invocation
@@ -47,6 +37,9 @@ TODO:
 Done:
 - Explicit rules parsing
     - Support multiline prerequisite definitions
+    - Support multiline recipes
+    - Support recipe definiton via `;` on the targets line
+    - Support recipe echoing aka prefixing recipe with `@`
     - Ignore comment lines
 - Explicit rules interpreting
     - Dropping circular dependencies
@@ -55,7 +48,18 @@ Done:
         - `No rule to make target 'x', needed by 'y'`
         - `Nothing to be done for 'x'`
         - `No rule to make target 'x'`
+- Add variables
+    - Recursively expanded variable (`=`)
+    - Simply expanded variables (`:=`)
+    - Conditional variable assignment (`?=`)
+    - Variables substitution (`$(var)`)
+- Add implicit rules
+    - Add pattern rule definition (when the target contains `%`)
+    - Add automatic variable `$*`
+    - Add automatic variable `$@`
+    - Add automatic variable `$<`
 
 ## Running tests
 
-go to demos and run `dune exec demoInterpret`
+go to demos and run `dune exec demoInterpret -- <folder_name> [targets]`, where
+`<folder_name>` is one of the folders there
