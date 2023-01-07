@@ -2,4 +2,8 @@
 
 (** SPDX-License-Identifier: LGPL-3.0-or-later *)
 
-val pass_file : Ident.ident Ast.source_file -> Ident.ident Ast.source_file
+type 'v t
+
+val create : unit -> 'v t
+val send : 'v t -> 'v -> unit
+val receive : 'v t -> 'v

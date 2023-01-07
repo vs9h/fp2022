@@ -34,15 +34,21 @@ let add_true_false ast =
   _true :: _false :: ast
 ;;
 
+let show_ast f =
+  Ast.show_source_file
+    (fun fmt id -> Ppx_deriving_runtime.Format.pp_print_string fmt (Ident.name id))
+    f
+;;
+
 let normalize ast =
   let ( let* ) = Result.bind in
+  let eval ast = Result.map_error (fun e -> [ e ]) (Eval.eval ast) in
   let result =
     let ast = add_true_false ast in
-    let* ast = Lookup.lookup [ "print" ] ast in
-    let ast = Print_builtin.pass_file ast in
+    let* ast = Lookup.lookup ast in
     let* _ = Typecheck.check ast in
     let* _ = Termination_check.check_file ast in
-    Eval.eval ast;
+    let* _ = eval ast in
     Ok ast
   in
   match result with

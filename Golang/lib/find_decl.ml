@@ -34,12 +34,15 @@ let check_decl d =
 let rec findin_exprs exprs = fold_state exprs ~f:findin_expr
 
 and findin_expr = function
-  | Const _ | Ident _ -> return ()
+  | Const _ | Ident _ | Make _ -> return ()
   | ArrLit (_, exprs) | Print exprs -> findin_exprs exprs
   | ArrIndex (l, r) | BinOp (l, _, r) -> findin_exprs [ l; r ]
   | Call (f, args) -> findin_exprs (f :: args)
   | UnOp (_, e) -> findin_expr e
   | FuncLit (s, b) -> findin_sign s *> findin_block b
+  | Print xs -> findin_exprs xs
+  | Len x -> findin_expr x
+  | Append (arr, vs) -> findin_expr arr *> findin_exprs vs
 
 and findin_sign { args; _ } =
   let findin_arg arg = check_decl (Arg arg) in
@@ -48,7 +51,7 @@ and findin_sign { args; _ } =
 and findin_block b = fold_state b ~f:findin_stmt
 
 and findin_stmt = function
-  | AssignStmt (l, r) -> findin_exprs [ l; r ]
+  | AssignStmt (l, r) | SendStmt (l, r) -> findin_exprs [ l; r ]
   | VarDecl v -> check_decl (Var v)
   | BlockStmt b -> findin_block b
   | GoStmt e | ExprStmt e -> findin_expr e
@@ -60,6 +63,9 @@ and findin_stmt = function
     let* _ = findin_expr cond in
     let* _ = findin_block b1 in
     findin_block b2
+  | ForStmt (cond, b) ->
+    let* _ = findin_expr cond in
+    findin_block b
 ;;
 
 let findin_toplevel = function
@@ -76,6 +82,5 @@ let find f id =
   let { found; _ }, _ = run_pass (findin_file f) ~init:{ target = id; found = [] } in
   match found with
   | [] -> None
-  | [ d ] -> Some d
-  | _ -> failwith ("Many declarations of the same identifier found: " ^ show_ident id)
+  | d :: _ -> Some d
 ;;

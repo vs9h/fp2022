@@ -45,6 +45,12 @@ module Scope = struct
       let id = ident ~scope:scope.id name in
       Ok (id, { scope with tab = Map.set scope.tab ~key:name ~data:id })
   ;;
+
+  let rec get_global scope =
+    match scope.parent with
+    | Some p -> get_global p
+    | None -> scope
+  ;;
 end
 
 type lookup_state =
@@ -59,9 +65,8 @@ end)
 
 open P
 
-let initial_state builtins =
-  let builtins = List.map builtins ~f:Ident.builtin in
-  let scope = Scope.empty_global_scope builtins in
+let initial_state =
+  let scope = Scope.empty_global_scope [] in
   { next_id = 1; scope; errs = [] }
 ;;
 
@@ -91,6 +96,13 @@ let resolve (name : string) : ident t =
     return error_ident
 ;;
 
+let is_defined name =
+  let* s = access in
+  match Scope.resolve s.scope name with
+  | Some _ -> return true
+  | None -> return false
+;;
+
 let enter_scope : Scope.t t =
   let* state = access in
   let id = state.next_id in
@@ -100,12 +112,22 @@ let enter_scope : Scope.t t =
   return old_scope
 ;;
 
+let get_scope =
+  let* state = access in
+  return state.scope
+;;
+
 let set_scope scope : unit t =
   let* state = access in
   put { state with scope }
 ;;
 
+let enter_fn_scope = enter_scope
+
 (* Expressions *)
+
+let err_expr = Ident Ident.error_ident
+
 let rec lookup_expr = function
   | Const c -> return (Const c)
   | Ident name ->
@@ -118,10 +140,7 @@ let rec lookup_expr = function
     let* arr = lookup_expr arr in
     let* i = lookup_expr i in
     return (ArrIndex (arr, i))
-  | Call (f, args) ->
-    let* f = lookup_expr f in
-    let* args = lookup_exprs args in
-    return (Call (f, args))
+  | Call (f, args) -> lookup_func_call f args
   | FuncLit (sign, b) ->
     let* sign, b = lookup_func sign b in
     return (FuncLit (sign, b))
@@ -135,12 +154,47 @@ let rec lookup_expr = function
   | Print e ->
     let* e = lookup_exprs e in
     return (Print e)
+  | Len e ->
+    let* e = lookup_expr e in
+    return (Len e)
+  | Append (arr, vs) ->
+    let* arr = lookup_expr arr in
+    let* vs = lookup_exprs vs in
+    return (Append (arr, vs))
+  | Make x -> return (Make x)
+
+and lookup_builtin name args =
+  match name with
+  | "print" -> return (Print args)
+  | "append" ->
+    (match args with
+     | arr :: first :: rest -> return (Append (arr, first :: rest))
+     | _ ->
+       add_err "append() takes at least 2 arguments" *> return (Append (err_expr, [])))
+  | "len" ->
+    (match args with
+     | [ x ] -> return (Len x)
+     | _ -> add_err "len() built-in takes exactly 1 argument" *> return (Len err_expr))
+  | name -> add_err ("Identifier " ^ name ^ " is not declared!") *> return err_expr
+
+and lookup_func_call f args =
+  let* args = lookup_exprs args in
+  let as_user_func =
+    let* f = lookup_expr f in
+    return (Call (f, args))
+  in
+  match f with
+  | Ident name ->
+    let* is_def = is_defined name in
+    if is_def then as_user_func else lookup_builtin name args
+  | _ -> as_user_func
 
 and lookup_func sign b =
-  let* enclosing_scope = enter_scope in
+  (* Closures are not allowed here *)
+  let* s = enter_fn_scope in
   let* sign = lookup_declare_signature sign in
   let* b = lookup_block b in
-  let* _ = set_scope enclosing_scope in
+  let* _ = set_scope s in
   return (sign, b)
 
 and lookup_declare_signature { args; ret } =
@@ -183,6 +237,14 @@ and lookup_stmt = function
     let* b1 = lookup_block b1 in
     let* b2 = lookup_block b2 in
     return (IfStmt (cond, b1, b2))
+  | ForStmt (cond, b) ->
+    let* cond = lookup_expr cond in
+    let* b = lookup_block b in
+    return (ForStmt (cond, b))
+  | SendStmt (chan, x) ->
+    let* chan = lookup_expr chan in
+    let* x = lookup_expr x in
+    return (SendStmt (chan, x))
 
 and lookup_vardecl name expr =
   let* expr = lookup_expr expr in
@@ -216,8 +278,8 @@ let lookup_file file =
   return d
 ;;
 
-let lookup builtins file =
-  let s, file = run_pass (lookup_file file) ~init:(initial_state builtins) in
+let lookup file =
+  let s, file = run_pass (lookup_file file) ~init:initial_state in
   match s.errs with
   | [] -> Ok file
   | errs -> Error errs

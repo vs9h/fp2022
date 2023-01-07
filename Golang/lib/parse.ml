@@ -40,13 +40,11 @@ let keyword kw = string kw
 
 let ident_str =
   let is_ident_start = function
-    | 'a' .. 'z' -> true
-    | '_' -> true
+    | 'a' .. 'z' | 'A' .. 'Z' | '_' -> true
     | _ -> false
   in
   let is_ident_mid = function
-    | 'a' .. 'z' -> true
-    | '0' .. '9' | '_' -> true
+    | 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '_' -> true
     | _ -> false
   in
   let* first = satisfy is_ident_start in
@@ -174,7 +172,11 @@ let type_dis =
   (* ===== TypeName ===== *)
   let type_name =
     let* name = ident_str in
-    if name = "int" then return IntTyp else fail "Unknown type"
+    match name with
+    | "int" -> return IntTyp
+    | "string" -> return StrTyp
+    | "bool" -> return BoolTyp
+    | _ -> fail "Unknown type"
   in
   (* ===================== *)
   (* ===== ArrayType ===== *)
@@ -183,9 +185,9 @@ let type_dis =
       ArrayLength := integer constant.
       ElementType := Type. *)
   let array_type d =
-    let* length = in_brackets integer in
+    let* _ = in_brackets ws <* ws in
     let* el_type = d.typ d in
-    return (length, el_type)
+    return { el = el_type }
   in
   let array_type_wrapped d =
     let* t = array_type d in
@@ -227,7 +229,13 @@ let type_dis =
     let* sign = keyword "func" *> ws *> signature d in
     return (FunTyp sign)
   in
-  let type_lit d = function_type d <|> array_type_wrapped d <?> "TypeLit" in
+  let chan_type d =
+    let* el = string "chan" *> ws1 *> d.typ d in
+    return (ChanTyp el)
+  in
+  let type_lit d =
+    function_type d <|> array_type_wrapped d <|> chan_type d <?> "TypeLit"
+  in
   let typ d = fix @@ fun typ -> type_name <|> type_lit d <|> in_brackets typ <?> "Type" in
   { signature; typ; array_typ = array_type }
 ;;
@@ -277,7 +285,7 @@ let eds =
      ArrayLit := ArrayType "{" ExprList "}".
   *)
   let array_lit d =
-    (let* t = array_typ in
+    (let* t = array_typ <* ws in
      let* elements = in_braces (d.expr_list d) in
      return (ArrLit (t, elements)))
     <?> "ArrayLit"
@@ -334,7 +342,7 @@ let eds =
     let* _ = ws *> string s <* ws in
     return (fun x -> UnOp (op, x))
   in
-  let unary_ops = unary_op Not "!" <|> unary_op Minus "-" in
+  let unary_ops = unary_op Not "!" <|> unary_op Minus "-" <|> unary_op Receive "<-" in
   let unary_expr d =
     (fix
     @@ fun unary_expr ->
@@ -362,7 +370,7 @@ let eds =
       let op, s = first in
       let chainer = List.fold_left fold_binops (binop op s) rest in
       chainl1 atom chainer
-    | _ -> assert false
+    | _ -> atom
   in
   let binops d confs = List.fold_left binop_chainl (unary_expr d) confs in
   (* From higher precedence to lower *)
@@ -383,16 +391,24 @@ let eds =
      ============================================================ *)
 
   (* TODO: simplified
+     There are two types of supported var declarations:
+     1. var x = expr;
+     2. var x type;
 
-     VarDecl := "var" ident Initializer? ";" .
-     Initializer := "=" expr . *)
+     VarDecl := "var" Ident Initializer ";" .
+     Initializer := "=" expr | type .
+  *)
   let initializer_ d =
-    let* e = char '=' *> ws *> d.expr d in
-    return e
+    let with_expr = char '=' *> ws *> d.expr d in
+    let with_type =
+      let* t = typ in
+      return (Make t)
+    in
+    with_expr <|> with_type
   in
   let var_decl d =
     let* name = keyword "var" *> ws1 *> ident_str <* ws in
-    let* value = option (Const (Int 0)) (initializer_ d) <* semi in
+    let* value = initializer_ d <* ws <* semi in
     return (name, value)
   in
   let func_decl d =
@@ -436,7 +452,13 @@ let eds =
     let* right = d.expr d <* ws <* semi in
     return (AssignStmt (left, right))
   in
-  let simple_stmt d = expr_stmt d <|> assign d in
+  let send_stmt d =
+    let* chan = ident in
+    let* _ = ws <* string "<-" <* ws in
+    let* x = d.expr d <* ws <* semi in
+    return (SendStmt (chan, x))
+  in
+  let simple_stmt d = send_stmt d <|> expr_stmt d <|> assign d in
   let go_stmt d =
     (let* expr = keyword "go" *> ws1 *> d.expr d <* ws <* semi in
      return (GoStmt expr))
@@ -471,6 +493,12 @@ let eds =
      else return (IfStmt (cond, then_block, [])))
     <?> "IfStatement"
   in
+  let for_stmt d =
+    let* _ = keyword "for" *> ws1 in
+    let* expr = d.expr d <* ws in
+    let* b = block d in
+    return (ForStmt (expr, b))
+  in
   let stmt d =
     fix
     @@ fun _ ->
@@ -479,6 +507,7 @@ let eds =
     <|> ret_stmt d
     <|> block_stmt d
     <|> if_stmt d
+    <|> for_stmt d
     <|> simple_stmt d
     <?> "Statement"
   in
@@ -556,8 +585,8 @@ let%test _ = Result.is_error (parse int_const "abc")
    ~~~~~~~~~~              Types                    ~~~~~~~~~~~
    ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ *)
 let%test _ = Ok IntTyp = parse typ "int"
-let%test _ = Ok (ArrayTyp (10, IntTyp)) = parse typ "[10]int"
-let%test _ = Ok (ArrayTyp (10, ArrayTyp (20, IntTyp))) = parse typ "[10][20]int"
+let%test _ = Ok (ArrayTyp { el = IntTyp }) = parse typ "[]int"
+let%test _ = Ok (ArrayTyp { el = ArrayTyp { el = IntTyp } }) = parse typ "[][]int"
 (* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
    ~~~~~~~~           Expressions Tests                ~~~~~~~~
    ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ *)
@@ -570,11 +599,11 @@ let%test _ = Ok (Const (Str "string")) = parse expr {|("string")|}
 let%test _ = Ok (Ident "abc") = parse expr "abc"
 let%test _ = Ok (Ident "abc") = parse expr "(abc)"
 (* Array Literals *)
-let%test _ = Ok (ArrLit ((0, IntTyp), [])) = parse expr "[0]int{}"
+let%test _ = Ok (ArrLit ({ el = IntTyp }, [])) = parse expr "[]int{}"
 
 let%test _ =
-  Ok (ArrLit ((3, IntTyp), [ Const (Int 1); Ident "true"; Const (Str "yes") ]))
-  = parse expr {|[3]int{1,true,"yes"}|}
+  Ok (ArrLit ({ el = IntTyp }, [ Const (Int 1); Ident "true"; Const (Str "yes") ]))
+  = parse expr {|[]int{1,true,"yes"}|}
 ;;
 
 (* Index Expressions *)
@@ -630,16 +659,17 @@ let%test _ =
 
 let%test _ =
   Ok
-    (FuncLit ({ args = [ "x", IntTyp; "y", ArrayTyp (10, IntTyp) ]; ret = One IntTyp }, []))
-  = parse expr "func(x int, y [10]int,) int {}"
+    (FuncLit
+       ({ args = [ "x", IntTyp; "y", ArrayTyp { el = IntTyp } ]; ret = One IntTyp }, []))
+  = parse expr "func(x int, y []int,) int {}"
 ;;
 
 let%test _ =
   Ok
     (FuncLit
-       ( { args = [ "x", ArrayTyp (10, IntTyp) ]; ret = One (ArrayTyp (10, IntTyp)) }
+       ( { args = [ "x", ArrayTyp { el = IntTyp } ]; ret = One (ArrayTyp { el = IntTyp }) }
        , [ RetStmt (Some (Ident "x")) ] ))
-  = parse expr "func(x [10]int,) [10]int { return x; }"
+  = parse expr "func(x []int,) []int { return x; }"
 ;;
 
 (* Binary operators *)
@@ -697,7 +727,7 @@ let%test _ =
 (* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
    ~~~~~~~~           Declarations Tests               ~~~~~~~~
    ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ *)
-let%test _ = Ok ("x", Const (Int 0)) = parse var_decl "var x;"
+let%test _ = Ok ("x", Make IntTyp) = parse var_decl "var x int;"
 let%test _ = Ok ("y", Const (Int 1)) = parse var_decl "var y=1;"
 let%test _ = Ok ("y", Ident "x") = parse var_decl "var y=x;"
 let%test _ = Ok ("f", { args = []; ret = Void }, []) = parse func_decl "func f() {}"
@@ -729,8 +759,13 @@ let%test _ =
 let%test _ = Ok (VarDecl ("x", Const (Int 1))) = parse stmt "var x = 1;"
 
 let%test _ =
-  Ok (VarDecl ("abc", ArrLit ((1, IntTyp), [ Const (Int 2) ])))
-  = parse stmt "var abc = [1]int{2};"
+  Ok (VarDecl ("abc", ArrLit ({ el = IntTyp }, [ Const (Int 2) ])))
+  = parse stmt "var abc = []int{2};"
+;;
+
+let%test _ =
+  Ok (VarDecl ("abc", ArrLit ({ el = IntTyp }, [ Const (Int 2) ])))
+  = parse stmt "var abc = [] int   {2};"
 ;;
 
 (* expression statements *)
@@ -738,12 +773,14 @@ let%test _ = Ok (ExprStmt (Const (Int 1))) = parse stmt "1;"
 let%test _ = Ok (ExprStmt (Ident "foo")) = parse stmt "foo;"
 
 let%test _ =
-  Ok (ExprStmt (Call (Ident "f", [ ArrLit ((1, IntTyp), [ Const (Str "123") ]) ])))
-  = parse stmt {|f([1]int{"123"});|}
+  Ok (ExprStmt (Call (Ident "f", [ ArrLit ({ el = IntTyp }, [ Const (Str "123") ]) ])))
+  = parse stmt {|f([]int{"123"});|}
 ;;
 
 (* assignments *)
 let%test _ = Ok (AssignStmt (Ident "a", Call (Ident "ff", []))) = parse stmt "a = ff();"
+(* channel send *)
+let%test _ = Ok (SendStmt (Ident "c", Ident "a")) = parse stmt "c <- a;"
 (* statements that start with a keyword *)
 let%test _ = Ok (GoStmt (Call (Ident "mygoroutine", []))) = parse stmt "go mygoroutine();"
 (* block *)
@@ -796,7 +833,7 @@ let%test _ =
       ; ExprStmt (Call (Ident "print", [ Ident "a"; Const (Int 2) ]))
       ; BlockStmt
           [ VarDecl ("b", Const (Int 10))
-          ; VarDecl ("c", Const (Int 0))
+          ; VarDecl ("c", Make StrTyp)
           ; ExprStmt (Call (Ident "f", [ Ident "b" ]))
           ]
       ; RetStmt (Some (Ident "a"))
@@ -806,7 +843,7 @@ let%test _ =
       {|func f(xx int, yy int) int { 
             var a = 1;
             print(a, 2);
-            { var b = 10; var c; f(b); }
+            { var b = 10; var c string; f(b); }
             return a;
           }|}
 ;;

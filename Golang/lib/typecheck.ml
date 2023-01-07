@@ -93,18 +93,12 @@ and check_expr = function
   | UnOp (op, expr) -> check_unop op expr
   | BinOp (l, op, r) -> check_binop l op r
   | Print _ -> finish_with_err "Cannot use print built-in's return value"
+  | Len e -> check_len e
+  | Append (arr, vs) -> check_append arr vs
+  | Make t -> check_make t
 
 and check_arr_lit array_typ els =
-  let len, el_typ = array_typ in
-  let* _ =
-    if List.length els = len
-    then return ()
-    else (
-      let msg =
-        Printf.sprintf "Expected %d array elements but received %d" len (List.length els)
-      in
-      add_err msg)
-  in
+  let { el = el_typ } = array_typ in
   let* _ = fold_state els ~f:(require_expr_typ el_typ) in
   return (Some (ArrayTyp array_typ))
 
@@ -112,7 +106,7 @@ and check_arr_index arr i =
   let* arr_typ = check_expr arr in
   let* _ = require_expr_typ IntTyp i in
   match arr_typ with
-  | Some (ArrayTyp (_, el_typ)) -> return (Some el_typ)
+  | Some (ArrayTyp { el = el_typ }) -> return (Some el_typ)
   | Some _ -> finish_with_err "Can only index arrays"
   | None -> return None
 
@@ -153,6 +147,12 @@ and check_unop op e =
   match op with
   | Minus -> require_expr_typ IntTyp e *> return (Some IntTyp)
   | Not -> require_expr_typ BoolTyp e *> return (Some BoolTyp)
+  | Receive ->
+    let* t = check_expr e in
+    (match t with
+     | Some (ChanTyp el) -> return (Some el)
+     | Some _ -> finish_with_err "Can only receive (<-) from a channel"
+     | None -> return None)
 
 and check_binop l op r =
   let not_overloaded_op ~op ~ret =
@@ -178,17 +178,43 @@ and check_binop l op r =
        finish_with_err "Operator + is defined only for (int, int) and (string, string)"
      | _ -> return None)
 
+and check_len e =
+  let* t = check_expr e in
+  match t with
+  | Some (ArrayTyp _) -> return (Some IntTyp)
+  | Some _ -> finish_with_err "len() built-in accepts only arrays"
+  | None -> return None
+
+and check_append arr vs =
+  let* t = check_expr arr in
+  match t with
+  | None -> return None
+  | Some (ArrayTyp { el }) ->
+    let* _ = fold_state vs ~f:(require_expr_typ el) in
+    return (Some (ArrayTyp { el }))
+  | Some _ -> finish_with_err "First argument of append() must be an array"
+
+and check_make = function
+  | FunTyp t ->
+    finish_with_err
+      (Printf.sprintf "Type '%s' does not have a default value" (show_typ (FunTyp t)))
+  | t -> return (Some t)
+
 and check_block b = fold_state b ~f:check_stmt
 
 and check_stmt = function
   | BlockStmt b -> check_block b
   | ExprStmt (Print args) -> check_exprs args
-  | ExprStmt (Call (f, args)) -> check_call f args ~used:Ignored *> return ()
-  | ExprStmt expr | GoStmt expr | VarDecl (_, expr) -> check_expr expr *> return ()
+  | GoStmt (Call (f, args)) | ExprStmt (Call (f, args)) ->
+    check_call f args ~used:Ignored *> return ()
+  | ExprStmt expr | VarDecl (_, expr) -> check_expr expr *> return ()
   | AssignStmt (l, r) -> check_assign l r
   | RetStmt expr -> check_ret expr
   | IfStmt (cond, b1, b2) ->
     require_expr_typ BoolTyp cond *> check_block b1 *> check_block b2
+  | ForStmt (cond, b) -> require_expr_typ BoolTyp cond *> check_block b
+  | GoStmt _ -> add_err "go statement must be followed by a function call"
+  | SendStmt (chan, x) -> check_send chan x
 
 and check_assign l r =
   match l with
@@ -198,6 +224,13 @@ and check_assign l r =
      | Some lt -> require_expr_typ lt r
      | None -> return ())
   | _ -> add_err "Can only assign to variables and array elements"
+
+and check_send chan x =
+  let* chant = check_expr chan in
+  match chant with
+  | Some (ChanTyp eltyp) -> require_expr_typ eltyp x
+  | Some _ -> add_err "Can only send (<-) into a channel"
+  | None -> return ()
 
 and check_ret e =
   let* s = access in
@@ -211,9 +244,29 @@ and check_ret e =
   | Some Void, None -> return ()
 ;;
 
+let check_global_var e =
+  match e with
+  | Const _ -> check_expr e *> return ()
+  | _ -> add_err "At top level global variables can only have constant initializers"
+;;
+
+let check_func_decl name s b =
+  let check_main_sign { args; ret } =
+    match args, ret with
+    | [], Void -> return ()
+    | _, _ -> add_err "main() function must accept zero arguments and return nothing"
+  in
+  let* _ =
+    match Ident.name name with
+    | "main" -> check_main_sign s
+    | _ -> return ()
+  in
+  check_func_lit s b *> return ()
+;;
+
 let check_toplevel = function
-  | GlobalVarDecl (_, e) -> check_expr e *> return ()
-  | FuncDecl (_, s, b) -> check_func_lit s b *> return ()
+  | GlobalVarDecl (_, e) -> check_global_var e
+  | FuncDecl (n, s, b) -> check_func_decl n s b
 ;;
 
 let check_file file = fold_state file ~f:check_toplevel

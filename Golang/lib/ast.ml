@@ -6,11 +6,12 @@ type typ =
   | IntTyp (* integer type *)
   | ArrayTyp of array_typ (* array type *)
   | FunTyp of string signature (* function type *)
+  | ChanTyp of typ (* chan T *)
   | StrTyp (* string type *)
   | BoolTyp (* boolean type *)
 [@@deriving show, ord]
 
-and array_typ = int * typ
+and array_typ = { el : typ }
 
 and 'id signature =
   { args : 'id arg list
@@ -28,6 +29,7 @@ and return_typ =
 type unaryop =
   | Minus (* -expr *)
   | Not (* !expr *)
+  | Receive (* <- chan *)
 [@@deriving show]
 
 type binop =
@@ -65,6 +67,9 @@ type 'id expr =
   | UnOp of (unaryop * 'id expr) (* unop expr *)
   | BinOp of ('id expr * binop * 'id expr) (* expr binop expr *)
   | Print of 'id expr list (* print(arg1, arg2, ... argn) *)
+  | Len of 'id expr (* len(arr) *)
+  | Append of 'id expr * 'id expr list (* append(arr, x, y, z, ...) *)
+  | Make of typ
 [@@deriving show]
 
 and 'id var_decl = 'id * 'id expr
@@ -85,6 +90,8 @@ and 'id stmt =
   | GoStmt of 'id expr (* go f(); *)
   | RetStmt of 'id expr option (* return expr; *)
   | IfStmt of 'id expr * 'id block * 'id block (* if expr { } else { } *)
+  | ForStmt of 'id expr * 'id block (* for expr { } *)
+  | SendStmt of 'id expr * 'id expr (* chan <- x *)
 [@@deriving show, ord]
 
 type 'id source_file = 'id top_level_decl list [@@deriving show]

@@ -1,8 +1,9 @@
 (library
  (name golang_lib)
  (public_name Golang.Lib)
- (libraries base angstrom)
+ (libraries base angstrom threads)
  (modules
+  Channel
   Ast
   Ident
   Ast_utils
@@ -10,7 +11,6 @@
   Pass
   Lookup
   Find_decl
-  Print_builtin
   Typecheck
   Termination_check
   Eval

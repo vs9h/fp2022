@@ -8,7 +8,7 @@ let rec show_typ = function
   | IntTyp -> "int"
   | StrTyp -> "string"
   | BoolTyp -> "bool"
-  | ArrayTyp (len, eltyp) -> Printf.sprintf "[%d]%s" len (show_typ eltyp)
+  | ArrayTyp { el = eltyp } -> Printf.sprintf "[]%s" (show_typ eltyp)
   | FunTyp { args; ret } ->
     let args = List.map (fun (_, typ) -> show_typ typ) args in
     let ret =
@@ -16,7 +16,8 @@ let rec show_typ = function
       | Void -> ""
       | One t -> " " ^ show_typ t
     in
-    Printf.sprintf "fn(%s)%s" (String.concat ", " args) ret
+    Printf.sprintf "func(%s)%s" (String.concat ", " args) ret
+  | ChanTyp t -> Printf.sprintf "chan %s" (show_typ t)
 ;;
 
 let eq_typ t1 t2 = compare_typ t1 t2 = 0
